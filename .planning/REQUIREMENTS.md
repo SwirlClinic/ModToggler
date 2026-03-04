@@ -82,13 +82,45 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| *(populated during roadmap creation)* | | |
+| GAME-01 | Phase 1 | Pending |
+| GAME-02 | Phase 1 | Pending |
+| GAME-03 | Phase 1 | Pending |
+| GAME-04 | Phase 1 | Pending |
+| TOGGLE-04 | Phase 1 | Pending |
+| TOGGLE-06 | Phase 1 | Pending |
+| RELIAB-01 | Phase 1 | Pending |
+| RELIAB-02 | Phase 1 | Pending |
+| RELIAB-03 | Phase 1 | Pending |
+| IMPORT-01 | Phase 2 | Pending |
+| IMPORT-02 | Phase 2 | Pending |
+| IMPORT-03 | Phase 2 | Pending |
+| IMPORT-04 | Phase 2 | Pending |
+| IMPORT-05 | Phase 2 | Pending |
+| IMPORT-06 | Phase 2 | Pending |
+| TOGGLE-01 | Phase 2 | Pending |
+| TOGGLE-02 | Phase 2 | Pending |
+| TOGGLE-03 | Phase 2 | Pending |
+| TOGGLE-05 | Phase 2 | Pending |
+| TOGGLE-07 | Phase 2 | Pending |
+| CONFLICT-01 | Phase 2 | Pending |
+| CONFLICT-02 | Phase 2 | Pending |
+| CONFLICT-03 | Phase 2 | Pending |
+| PROFILE-01 | Phase 3 | Pending |
+| PROFILE-02 | Phase 3 | Pending |
+| PROFILE-03 | Phase 3 | Pending |
+| PROFILE-04 | Phase 3 | Pending |
+| LOOSE-01 | Phase 4 | Pending |
+| LOOSE-02 | Phase 4 | Pending |
+| LOOSE-03 | Phase 4 | Pending |
+| LOOSE-04 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 ⚠️
+- v1 requirements: 31 total
+- Mapped to phases: 31
+- Unmapped: 0
+
+Note: The initial header said 27 requirements; actual count from the requirement list is 31. All 31 are mapped.
 
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-04 after initial definition*
+*Last updated: 2026-03-04 after roadmap creation — traceability populated*
