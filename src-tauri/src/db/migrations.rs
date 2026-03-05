@@ -1,6 +1,6 @@
 // IMPORTANT: Version numbers must be globally unique and monotonically increasing.
 // NEVER reuse or insert between existing version numbers.
-// Next available version: 5
+// Next available version: 7
 
 use tauri_plugin_sql::{Migration, MigrationKind};
 
@@ -59,6 +59,27 @@ pub fn get_migrations() -> Vec<Migration> {
             );",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "create_sub_mods_table",
+            sql: "CREATE TABLE IF NOT EXISTS sub_mods (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                mod_id          INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+                name            TEXT NOT NULL,
+                folder_name     TEXT NOT NULL,
+                enabled         INTEGER NOT NULL DEFAULT 0,
+                user_enabled    INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_sub_mods_mod_id ON sub_mods(mod_id);",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 6,
+            description: "add_sub_mod_id_to_file_entries",
+            sql: "ALTER TABLE file_entries ADD COLUMN sub_mod_id INTEGER REFERENCES sub_mods(id) ON DELETE CASCADE;
+            CREATE INDEX IF NOT EXISTS idx_file_entries_sub_mod ON file_entries(sub_mod_id);",
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -67,8 +88,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn migration_count_is_four() {
-        assert_eq!(get_migrations().len(), 4);
+    fn migration_count_is_six() {
+        assert_eq!(get_migrations().len(), 6);
     }
 
     #[test]
