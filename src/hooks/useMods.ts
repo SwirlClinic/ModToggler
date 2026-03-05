@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { commands } from '../lib/tauri'
+import type { LooseFileInput } from '../bindings'
 
 /**
  * Unwrap a tauri-specta Result<T, AppError>.
@@ -125,6 +126,75 @@ export function useDeleteMod() {
     },
     onError: (err: Error) => {
       toast.error(err.message ?? 'Delete failed')
+    },
+  })
+}
+
+// ── Loose-File Mutations ──
+
+export function useImportLooseFiles() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (args: { gameId: number; modName: string; files: LooseFileInput[] }) => {
+      return unwrap(await commands.importLooseFiles(args.gameId, args.modName, args.files))
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['mods'] })
+      toast.success(`Imported "${data.mod_record.name}" with ${data.file_count} files`)
+    },
+    onError: (err: Error) => {
+      toast.error(err.message ?? 'Import failed')
+    },
+  })
+}
+
+export function useImportLooseZip() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (args: { gameId: number; zipPath: string; modName: string; selectedFiles: LooseFileInput[] }) => {
+      return unwrap(await commands.importLooseZip(args.gameId, args.zipPath, args.modName, args.selectedFiles))
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['mods'] })
+      toast.success(`Imported "${data.mod_record.name}" with ${data.file_count} files`)
+    },
+    onError: (err: Error) => {
+      toast.error(err.message ?? 'Zip import failed')
+    },
+  })
+}
+
+export function useAddFilesToMod() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (args: { modId: number; files: LooseFileInput[] }) => {
+      return unwrap(await commands.addFilesToMod(args.modId, args.files))
+    },
+    onSuccess: (fileCount) => {
+      queryClient.invalidateQueries({ queryKey: ['mods'] })
+      queryClient.invalidateQueries({ queryKey: ['mod-files'] })
+      toast.success(`Added ${fileCount} files to mod`)
+    },
+    onError: (err: Error) => {
+      toast.error(err.message ?? 'Failed to add files')
+    },
+  })
+}
+
+export function useRemoveFileFromMod() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (fileEntryId: number) => {
+      return unwrap(await commands.removeFileFromMod(fileEntryId))
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mod-files'] })
+      queryClient.invalidateQueries({ queryKey: ['mods'] })
+      queryClient.invalidateQueries({ queryKey: ['conflicts'] })
+      toast.success('File removed from mod')
+    },
+    onError: (err: Error) => {
+      toast.error(err.message ?? 'Failed to remove file')
     },
   })
 }
