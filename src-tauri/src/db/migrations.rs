@@ -1,6 +1,6 @@
 // IMPORTANT: Version numbers must be globally unique and monotonically increasing.
 // NEVER reuse or insert between existing version numbers.
-// Next available version: 7
+// Next available version: 8
 
 use tauri_plugin_sql::{Migration, MigrationKind};
 
@@ -80,6 +80,28 @@ pub fn get_migrations() -> Vec<Migration> {
             CREATE INDEX IF NOT EXISTS idx_file_entries_sub_mod ON file_entries(sub_mod_id);",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 7,
+            description: "create_profiles_and_profile_entries_tables",
+            sql: "CREATE TABLE IF NOT EXISTS profiles (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                game_id     INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+                name        TEXT NOT NULL,
+                created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
+                updated_at  INTEGER NOT NULL DEFAULT (unixepoch()),
+                UNIQUE(game_id, name)
+            );
+            CREATE INDEX IF NOT EXISTS idx_profiles_game_id ON profiles(game_id);
+            CREATE TABLE IF NOT EXISTS profile_entries (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                profile_id  INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+                mod_id      INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+                enabled     INTEGER NOT NULL DEFAULT 0,
+                sub_mod_states TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_profile_entries_profile ON profile_entries(profile_id);",
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -88,8 +110,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn migration_count_is_six() {
-        assert_eq!(get_migrations().len(), 6);
+    fn migration_count_is_seven() {
+        assert_eq!(get_migrations().len(), 7);
     }
 
     #[test]

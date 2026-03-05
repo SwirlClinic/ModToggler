@@ -123,6 +123,51 @@ impl<'r> FromRow<'r, SqliteRow> for ConflictInfo {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Type, Clone)]
+pub struct ProfileRecord {
+    pub id: i64,
+    pub game_id: i64,
+    pub name: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+impl<'r> FromRow<'r, SqliteRow> for ProfileRecord {
+    fn from_row(row: &'r SqliteRow) -> Result<Self, sqlx::Error> {
+        Ok(ProfileRecord {
+            id: row.try_get("id")?,
+            game_id: row.try_get("game_id")?,
+            name: row.try_get("name")?,
+            created_at: row.try_get("created_at")?,
+            updated_at: row.try_get("updated_at")?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Type, Clone)]
+pub struct ProfileEntryRecord {
+    pub id: i64,
+    pub profile_id: i64,
+    pub mod_id: i64,
+    pub enabled: bool,
+    pub sub_mod_states: Option<String>,
+}
+
+impl<'r> FromRow<'r, SqliteRow> for ProfileEntryRecord {
+    fn from_row(row: &'r SqliteRow) -> Result<Self, sqlx::Error> {
+        Ok(ProfileEntryRecord {
+            id: row.try_get("id")?,
+            profile_id: row.try_get("profile_id")?,
+            mod_id: row.try_get("mod_id")?,
+            enabled: {
+                let val: i64 = row.try_get("enabled")?;
+                val != 0
+            },
+            sub_mod_states: row.try_get("sub_mod_states")?,
+        })
+    }
+}
+
 #[derive(Debug, Serialize, Type)]
 pub struct IntegrityScanResult {
     pub missing_from_game: Vec<ModRecord>,
@@ -592,6 +637,114 @@ pub async fn scan_incomplete_journals(
         .collect()
 }
 
+// ─── Profile Queries ───
+
+pub async fn insert_profile(
+    pool: &SqlitePool,
+    game_id: i64,
+    name: &str,
+) -> Result<ProfileRecord, AppError> {
+    let result = sqlx::query(
+        "INSERT INTO profiles (game_id, name) VALUES ($1, $2)",
+    )
+    .bind(game_id)
+    .bind(name)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    let id = result.last_insert_rowid();
+
+    // Fetch the full record to get server-generated defaults
+    get_profile(pool, id).await
+}
+
+pub async fn list_profiles_for_game(
+    pool: &SqlitePool,
+    game_id: i64,
+) -> Result<Vec<ProfileRecord>, AppError> {
+    let rows = sqlx::query_as::<_, ProfileRecord>(
+        "SELECT id, game_id, name, created_at, updated_at FROM profiles WHERE game_id=$1 ORDER BY name ASC",
+    )
+    .bind(game_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    Ok(rows)
+}
+
+pub async fn get_profile(pool: &SqlitePool, profile_id: i64) -> Result<ProfileRecord, AppError> {
+    sqlx::query_as::<_, ProfileRecord>(
+        "SELECT id, game_id, name, created_at, updated_at FROM profiles WHERE id=$1",
+    )
+    .bind(profile_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?
+    .ok_or_else(|| AppError::ModNotFound(format!("Profile ID {} not found", profile_id)))
+}
+
+pub async fn get_profile_by_name(
+    pool: &SqlitePool,
+    game_id: i64,
+    name: &str,
+) -> Result<Option<ProfileRecord>, AppError> {
+    sqlx::query_as::<_, ProfileRecord>(
+        "SELECT id, game_id, name, created_at, updated_at FROM profiles WHERE game_id=$1 AND name=$2",
+    )
+    .bind(game_id)
+    .bind(name)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+pub async fn delete_profile(pool: &SqlitePool, profile_id: i64) -> Result<(), AppError> {
+    sqlx::query("DELETE FROM profiles WHERE id=$1")
+        .bind(profile_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+    Ok(())
+}
+
+pub async fn insert_profile_entry(
+    pool: &SqlitePool,
+    profile_id: i64,
+    mod_id: i64,
+    enabled: bool,
+    sub_mod_states: Option<&str>,
+) -> Result<(), AppError> {
+    let en: i64 = if enabled { 1 } else { 0 };
+    sqlx::query(
+        "INSERT INTO profile_entries (profile_id, mod_id, enabled, sub_mod_states) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(profile_id)
+    .bind(mod_id)
+    .bind(en)
+    .bind(sub_mod_states)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+    Ok(())
+}
+
+pub async fn list_profile_entries(
+    pool: &SqlitePool,
+    profile_id: i64,
+) -> Result<Vec<ProfileEntryRecord>, AppError> {
+    let rows = sqlx::query_as::<_, ProfileEntryRecord>(
+        "SELECT id, profile_id, mod_id, enabled, sub_mod_states FROM profile_entries WHERE profile_id=$1",
+    )
+    .bind(profile_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    Ok(rows)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -939,5 +1092,115 @@ mod tests {
         // Should no longer be incomplete
         let incomplete = scan_incomplete_journals(&pool).await.unwrap();
         assert!(incomplete.is_empty(), "Completed journal should not appear in scan");
+    }
+
+    // ─── Profile Tests ───
+
+    #[tokio::test]
+    async fn test_insert_profile_creates_record() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let profile = insert_profile(&pool, game.id, "Tournament Setup").await.unwrap();
+        assert_eq!(profile.game_id, game.id);
+        assert_eq!(profile.name, "Tournament Setup");
+        assert!(profile.created_at > 0);
+        assert!(profile.updated_at > 0);
+    }
+
+    #[tokio::test]
+    async fn test_list_profiles_for_game_filters() {
+        let pool = test_pool().await;
+        let game1 = seed_game(&pool).await;
+        let game2 = insert_game(&pool, "Other Game", "D:/other", "D:/staging", "loose", false).await.unwrap();
+        insert_profile(&pool, game1.id, "Profile A").await.unwrap();
+        insert_profile(&pool, game1.id, "Profile B").await.unwrap();
+        insert_profile(&pool, game2.id, "Other Profile").await.unwrap();
+
+        let profiles = list_profiles_for_game(&pool, game1.id).await.unwrap();
+        assert_eq!(profiles.len(), 2);
+        // Ordered by name ASC
+        assert_eq!(profiles[0].name, "Profile A");
+        assert_eq!(profiles[1].name, "Profile B");
+
+        let profiles2 = list_profiles_for_game(&pool, game2.id).await.unwrap();
+        assert_eq!(profiles2.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_get_profile_by_name_returns_match() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        insert_profile(&pool, game.id, "My Profile").await.unwrap();
+
+        let found = get_profile_by_name(&pool, game.id, "My Profile").await.unwrap();
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().name, "My Profile");
+
+        let not_found = get_profile_by_name(&pool, game.id, "Nonexistent").await.unwrap();
+        assert!(not_found.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_unique_game_name_constraint() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        insert_profile(&pool, game.id, "Duplicate").await.unwrap();
+        let result = insert_profile(&pool, game.id, "Duplicate").await;
+        assert!(result.is_err(), "Duplicate name for same game should fail");
+    }
+
+    #[tokio::test]
+    async fn test_delete_profile_cascades_to_entries() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let profile = insert_profile(&pool, game.id, "To Delete").await.unwrap();
+        insert_profile_entry(&pool, profile.id, m.id, true, None).await.unwrap();
+
+        // Entries exist
+        let entries = list_profile_entries(&pool, profile.id).await.unwrap();
+        assert_eq!(entries.len(), 1);
+
+        // Delete profile
+        delete_profile(&pool, profile.id).await.unwrap();
+
+        // Entries gone
+        let entries = list_profile_entries(&pool, profile.id).await.unwrap();
+        assert!(entries.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_profile_entry_roundtrip_with_sub_mod_states() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let profile = insert_profile(&pool, game.id, "Test Profile").await.unwrap();
+
+        let sub_states = r#"[{"sub_mod_id":1,"enabled":true},{"sub_mod_id":2,"enabled":false}]"#;
+        insert_profile_entry(&pool, profile.id, m.id, true, Some(sub_states)).await.unwrap();
+
+        let entries = list_profile_entries(&pool, profile.id).await.unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].mod_id, m.id);
+        assert!(entries[0].enabled);
+        assert_eq!(entries[0].sub_mod_states.as_deref(), Some(sub_states));
+    }
+
+    #[tokio::test]
+    async fn test_delete_mod_cascades_to_profile_entries() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let profile = insert_profile(&pool, game.id, "Test").await.unwrap();
+        insert_profile_entry(&pool, profile.id, m.id, true, None).await.unwrap();
+
+        // Delete the mod
+        delete_mod_db(&pool, m.id).await.unwrap();
+
+        // Profile still exists but entries are gone
+        let profile_still = get_profile(&pool, profile.id).await.unwrap();
+        assert_eq!(profile_still.name, "Test");
+        let entries = list_profile_entries(&pool, profile.id).await.unwrap();
+        assert!(entries.is_empty(), "Mod deletion should cascade to profile_entries");
     }
 }
