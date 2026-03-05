@@ -84,6 +84,52 @@ pub fn partition_files(paths: &[String]) -> (Vec<String>, HashMap<String, Vec<St
     (main_files, sub_mods)
 }
 
+/// Copy source files to a staging directory. Returns the list of actual staging filenames used.
+/// On filename collision (two files with the same target name), appends a numeric suffix.
+/// source_paths: slice of (absolute_source_path, desired_staging_filename) pairs.
+pub fn copy_files_to_staging(
+    source_paths: &[(String, String)],
+    staging_dir: &Path,
+) -> Result<Vec<String>, AppError> {
+    fs::create_dir_all(staging_dir)?;
+
+    let mut used_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut result = Vec::new();
+
+    for (source_path, desired_name) in source_paths {
+        let actual_name = if staging_dir.join(desired_name).exists() || used_names.contains(desired_name) {
+            // Generate a unique name with numeric suffix
+            let stem = Path::new(desired_name)
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            let ext = Path::new(desired_name)
+                .extension()
+                .map(|e| format!(".{}", e.to_string_lossy()))
+                .unwrap_or_default();
+            let mut counter = 1u32;
+            loop {
+                let candidate = format!("{}_{}{}", stem, counter, ext);
+                if !staging_dir.join(&candidate).exists() && !used_names.contains(&candidate) {
+                    break candidate;
+                }
+                counter += 1;
+            }
+        } else {
+            desired_name.clone()
+        };
+        used_names.insert(actual_name.clone());
+
+        let src = Path::new(source_path);
+        let dst = staging_dir.join(&actual_name);
+        fs::copy(src, &dst)?;
+        result.push(actual_name);
+    }
+
+    Ok(result)
+}
+
 /// Check if any file in the manifest has a recognized mod extension (.pak, .ucas, .utoc).
 pub fn has_recognized_mod_files(paths: &[String]) -> bool {
     let extensions = [".pak", ".ucas", ".utoc"];
@@ -240,6 +286,58 @@ mod tests {
 
         assert_eq!(main_files.len(), 2);
         assert!(sub_mods.is_empty());
+    }
+
+    #[test]
+    fn copy_files_to_staging_basic() {
+        let tmp = TempDir::new().unwrap();
+        let source_dir = tmp.path().join("sources");
+        let staging = tmp.path().join("staging");
+        fs::create_dir_all(&source_dir).unwrap();
+
+        // Create source files
+        fs::write(source_dir.join("config.ini"), b"config data").unwrap();
+        fs::write(source_dir.join("readme.txt"), b"readme data").unwrap();
+
+        let inputs = vec![
+            (source_dir.join("config.ini").display().to_string(), "config.ini".to_string()),
+            (source_dir.join("readme.txt").display().to_string(), "readme.txt".to_string()),
+        ];
+
+        let result = copy_files_to_staging(&inputs, &staging).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], "config.ini");
+        assert_eq!(result[1], "readme.txt");
+        assert!(staging.join("config.ini").exists());
+        assert!(staging.join("readme.txt").exists());
+    }
+
+    #[test]
+    fn copy_files_to_staging_handles_name_collisions() {
+        let tmp = TempDir::new().unwrap();
+        let source_dir = tmp.path().join("sources");
+        let staging = tmp.path().join("staging");
+        fs::create_dir_all(&source_dir).unwrap();
+
+        // Create source files with same desired names
+        fs::write(source_dir.join("file_a.ini"), b"data a").unwrap();
+        fs::write(source_dir.join("file_b.ini"), b"data b").unwrap();
+
+        let inputs = vec![
+            (source_dir.join("file_a.ini").display().to_string(), "config.ini".to_string()),
+            (source_dir.join("file_b.ini").display().to_string(), "config.ini".to_string()),
+        ];
+
+        let result = copy_files_to_staging(&inputs, &staging).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], "config.ini");
+        assert_eq!(result[1], "config_1.ini");
+        assert!(staging.join("config.ini").exists());
+        assert!(staging.join("config_1.ini").exists());
+
+        // Verify content is correct
+        assert_eq!(fs::read_to_string(staging.join("config.ini")).unwrap(), "data a");
+        assert_eq!(fs::read_to_string(staging.join("config_1.ini")).unwrap(), "data b");
     }
 
     #[test]
