@@ -71,14 +71,19 @@ Plans:
 - [ ] 03-02-PLAN.md — Profile frontend: React Query hooks, Zustand state, dropdown, save/manage dialogs, ModList integration
 
 ### Phase 4: Loose-File Games
-**Goal**: Users can manage mods for games where mod files are scattered across the game root
+**Goal**: Users can manage mods for games where mod files are scattered across the game root, with manual file tagging, destination path mapping, and the same toggle/conflict infrastructure as structured mods
 **Depends on**: Phase 2
 **Requirements**: LOOSE-01, LOOSE-02, LOOSE-03, LOOSE-04
 **Success Criteria** (what must be TRUE):
   1. User can configure a game as loose-file (mishmash) mode
   2. User can import a mod for a loose-file game by manually tagging which files belong to it and specifying their destination paths
   3. Toggling a loose-file mod moves its tagged files to/from the staging folder the same way structured mods work
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — DB migration v8 (destination_path + mod_type), extended queries, toggle service extension, loose import helper
+- [ ] 04-02-PLAN.md — Tauri commands for loose-file operations, bindings regeneration, React Query hooks
+- [ ] 04-03-PLAN.md — Frontend UI: LooseImportDialog, FileMapTable, GameSelector badge, ModCard/ModList extensions, visual checkpoint
 
 ## Progress
 
@@ -90,4 +95,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation | 5/5 | Complete | 2026-03-05 |
 | 2. Core Mod Loop | 4/5 | In Progress|  |
 | 3. Profiles | 2/2 | Complete   | 2026-03-05 |
-| 4. Loose-File Games | 0/TBD | Not started | - |
+| 4. Loose-File Games | 0/3 | Not started | - |
