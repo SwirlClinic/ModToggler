@@ -51,9 +51,21 @@ pub fn run() {
             let db_url = format!("sqlite:{}?mode=rwc", db_path.display());
 
             let pool = tauri::async_runtime::block_on(async {
-                sqlx::SqlitePool::connect(&db_url)
+                let pool = sqlx::SqlitePool::connect(&db_url)
                     .await
-                    .expect("Failed to connect to SQLite database")
+                    .expect("Failed to connect to SQLite database");
+
+                // Run migrations directly on the sqlx pool so Rust commands always have tables.
+                // This mirrors the DDL from db::migrations but runs on the pool Rust commands use.
+                // Using raw_sql to support multi-statement migrations (e.g., CREATE TABLE + CREATE INDEX).
+                for migration in db::migrations::get_migrations() {
+                    sqlx::raw_sql(migration.sql)
+                        .execute(&pool)
+                        .await
+                        .expect("Failed to run migration");
+                }
+
+                pool
             });
 
             app.manage(pool);
