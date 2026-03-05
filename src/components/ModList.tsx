@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Upload, Loader2 } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
+import { listen, TauriEvent } from '@tauri-apps/api/event'
 import { Button } from '@/components/ui/button'
 import EmptyModView from './EmptyModView'
 import ModCard from './ModCard'
@@ -31,6 +32,52 @@ export default function ModList() {
     modId: number
     readOnly: boolean
   } | null>(null)
+
+  // Drag-and-drop state
+  const [isDragOver, setIsDragOver] = useState(false)
+  const lastDropRef = useRef<{ path: string; time: number }>({ path: '', time: 0 })
+
+  const openImportForPath = useCallback((zipPath: string) => {
+    setImportZipPath(zipPath)
+    setImportOpen(true)
+  }, [])
+
+  // Tauri drag-and-drop listeners
+  useEffect(() => {
+    const unlisteners: Array<() => void> = []
+
+    listen<{ paths: string[] }>(TauriEvent.DRAG_DROP, (event) => {
+      setIsDragOver(false)
+      const zipFiles = (event.payload.paths || []).filter((p: string) =>
+        p.toLowerCase().endsWith('.zip'),
+      )
+      if (zipFiles.length > 0) {
+        const path = zipFiles[0]
+        const now = Date.now()
+        // Debounce guard for Tauri bug #14134 duplicate events
+        if (
+          lastDropRef.current.path === path &&
+          now - lastDropRef.current.time < 500
+        ) {
+          return
+        }
+        lastDropRef.current = { path, time: now }
+        openImportForPath(path)
+      }
+    }).then((fn) => unlisteners.push(fn))
+
+    listen(TauriEvent.DRAG_ENTER, () => {
+      setIsDragOver(true)
+    }).then((fn) => unlisteners.push(fn))
+
+    listen(TauriEvent.DRAG_LEAVE, () => {
+      setIsDragOver(false)
+    }).then((fn) => unlisteners.push(fn))
+
+    return () => {
+      unlisteners.forEach((fn) => fn())
+    }
+  }, [openImportForPath])
 
   const game = games.find((g) => g.id === activeGameId)
 
@@ -81,7 +128,7 @@ export default function ModList() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       {/* Header bar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="text-sm text-muted-foreground">
@@ -112,6 +159,16 @@ export default function ModList() {
           />
         ))}
       </div>
+
+      {/* Drag-and-drop overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/80 border-2 border-dashed border-primary rounded-lg pointer-events-none">
+          <div className="text-center">
+            <Upload className="h-10 w-10 mx-auto mb-2 text-primary" />
+            <p className="text-sm font-medium text-primary">Drop .zip to import</p>
+          </div>
+        </div>
+      )}
 
       {/* Import dialog */}
       {activeGameId && (
