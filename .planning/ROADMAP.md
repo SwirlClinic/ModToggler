@@ -24,10 +24,17 @@ ModToggler ships in four phases. The foundation is built first: game configurati
 **Success Criteria** (what must be TRUE):
   1. User can add, edit, and remove games with a name and mod directory path
   2. User can select a game from a list and see its (empty) mod view
-  3. App-managed staging directory (~/.modtoggler/disabled/[game]/) is created on game add
+  3. App-managed staging directory (~/.modtoggler/games/[game]/staging/) is created on game add
   4. App recovers correctly after a mid-toggle crash using the transaction journal (no orphaned files)
   5. App reports clear errors when file operations fail due to permissions, missing files, or cross-drive moves
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Scaffold project, install dependencies, SQLite migrations, tauri-specta wiring, test infrastructure
+- [ ] 01-02-PLAN.md — AppError type hierarchy, file_ops service (atomic move + cross-drive fallback), journal service
+- [ ] 01-03-PLAN.md — Game management Tauri commands (add/remove/edit/list) + integrity scan command
+- [ ] 01-04-PLAN.md — React app shell, game selector, game CRUD forms, empty mod view, useGames hooks
+- [ ] 01-05-PLAN.md — IntegrityAlert component, useIntegrityScan hook, visual end-to-end checkpoint
 
 ### Phase 2: Core Mod Loop
 **Goal**: Users can import mods and toggle them on/off with conflict warnings
@@ -69,7 +76,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 0/5 | In progress | - |
 | 2. Core Mod Loop | 0/TBD | Not started | - |
 | 3. Profiles | 0/TBD | Not started | - |
 | 4. Loose-File Games | 0/TBD | Not started | - |

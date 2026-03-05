@@ -27,9 +27,8 @@ Game configuration UI, app-managed staging setup, atomic file operations infrast
 
 ### Permission Strategy
 - UAC elevation prompted once per session — not per operation
-- Elevated helper process spawned at app start when games are configured in protected paths (Program Files)
-- Helper stays running for the session, handles all file moves in protected directories
-- If no games are in protected paths, no elevation needed — helper not spawned
+- Phase 1 delivers: `requires_elevation` column on the `games` table, and `is_protected_path()` detection in add_game/edit_game — forward-compatibility hooks are in place
+- Elevated helper binary and startup spawn logic are deferred to Phase 2 (see Deferred Ideas below)
 
 ### App Shell / Layout
 - Single game view — select a game first, then full-screen mod view (confirmed during project questioning)
@@ -78,6 +77,7 @@ Game configuration UI, app-managed staging setup, atomic file operations infrast
 
 - Auto-detect Steam library games — future enhancement to game setup
 - Custom game icons/thumbnails — nice to have, not v1 priority
+- Elevated helper process spawned at app start when games are in protected paths (Program Files) — Phase 1 lays the detection groundwork (requires_elevation column, is_protected_path()), but the helper binary creation and startup spawn logic belong in Phase 2 when actual file move operations are implemented
 
 </deferred>
 
