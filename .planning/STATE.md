@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 2 context gathered
-last_updated: "2026-03-05T15:40:53.910Z"
-last_activity: 2026-03-05 — Completed 01-05-PLAN.md (Integrity scan UI + Phase 1 verification)
+status: in-progress
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-05T16:07:38.000Z"
+last_activity: 2026-03-05 — Completed 02-01-PLAN.md (Import service foundation)
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_plans: 10
+  completed_plans: 6
+  percent: 60
 ---
 
 # Project State
@@ -21,38 +21,40 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Users can quickly toggle mods on and off without manually moving files, with confidence the app tracks what belongs to which mod.
-**Current focus:** Phase 1 — Foundation
+**Current focus:** Phase 2 — Core Mod Loop
 
 ## Current Position
 
-Phase: 1 of 4 (Foundation) -- COMPLETE
-Plan: 5 of 5 in current phase
-Status: Phase 1 Complete
-Last activity: 2026-03-05 — Completed 01-05-PLAN.md (Integrity scan UI + Phase 1 verification)
+Phase: 2 of 4 (Core Mod Loop)
+Plan: 1 of 5 in current phase (COMPLETE)
+Status: Executing Phase 2
+Last activity: 2026-03-05 — Completed 02-01-PLAN.md (Import service foundation)
 
-Progress: [██████████] 100%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 9min
-- Total execution time: 0.73 hours
+- Total plans completed: 6
+- Average duration: 8min
+- Total execution time: 0.78 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1-Foundation | 5/5 | 44min | 9min |
+| 2-Core-Mod-Loop | 1/5 | 3min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (21min), 01-02 (3min), 01-03 (9min), 01-04 (3min), 01-05 (8min)
+- Last 5 plans: 01-02 (3min), 01-03 (9min), 01-04 (3min), 01-05 (8min), 02-01 (3min)
 - Trend: consistent
 
 *Updated after each plan completion*
 | Phase 01 P03 | 9min | 2 tasks | 8 files |
 | Phase 01 P04 | 3min | 2 tasks | 16 files |
 | Phase 01 P05 | 8min | 2 tasks | 5 files |
+| Phase 02 P01 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -75,6 +77,8 @@ Recent decisions affecting current work:
 - 01-04: Dropped TanStack Router from main.tsx -- single-view desktop app doesn't need client routing
 - [Phase 01]: Run SQLite migrations directly on sqlx pool via raw_sql in setup block
 - [Phase 01]: Set dark class on html element statically (dark-only app for v1)
+- 02-01: Used zip v8.x (actual latest) instead of v2.x stated in research doc
+- 02-01: Synchronous extraction API -- zip crate is sync, Tauri commands use spawn_blocking
 
 ### Pending Todos
 
@@ -86,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T15:40:53.908Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-core-mod-loop/02-CONTEXT.md
+Last session: 2026-03-05T16:07:38.000Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: .planning/phases/02-core-mod-loop/02-02-PLAN.md

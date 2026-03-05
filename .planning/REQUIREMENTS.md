@@ -14,12 +14,12 @@
 
 ### Mod Import
 
-- [ ] **IMPORT-01**: User can import a mod from a .zip archive
-- [ ] **IMPORT-02**: App extracts .zip and records the full file manifest (every file path within the mod)
-- [ ] **IMPORT-03**: App auto-groups .pak/.ucas/.utoc files by base stem as a single logical mod
-- [ ] **IMPORT-04**: App detects sub-mod option folders (e.g. Option_ModName_Variant/) and registers them as independently toggleable options
+- [x] **IMPORT-01**: User can import a mod from a .zip archive
+- [x] **IMPORT-02**: App extracts .zip and records the full file manifest (every file path within the mod)
+- [x] **IMPORT-03**: App auto-groups .pak/.ucas/.utoc files by base stem as a single logical mod
+- [x] **IMPORT-04**: App detects sub-mod option folders (e.g. Option_ModName_Variant/) and registers them as independently toggleable options
 - [ ] **IMPORT-05**: User can see which files belong to each mod
-- [ ] **IMPORT-06**: App validates zip contents to prevent path traversal (ZipSlip protection)
+- [x] **IMPORT-06**: App validates zip contents to prevent path traversal (ZipSlip protection)
 
 ### Mod Toggling
 
@@ -91,12 +91,12 @@
 | RELIAB-01 | Phase 1 | Complete |
 | RELIAB-02 | Phase 1 | Complete |
 | RELIAB-03 | Phase 1 | Complete |
-| IMPORT-01 | Phase 2 | Pending |
-| IMPORT-02 | Phase 2 | Pending |
-| IMPORT-03 | Phase 2 | Pending |
-| IMPORT-04 | Phase 2 | Pending |
+| IMPORT-01 | Phase 2 | Complete |
+| IMPORT-02 | Phase 2 | Complete |
+| IMPORT-03 | Phase 2 | Complete |
+| IMPORT-04 | Phase 2 | Complete |
 | IMPORT-05 | Phase 2 | Pending |
-| IMPORT-06 | Phase 2 | Pending |
+| IMPORT-06 | Phase 2 | Complete |
 | TOGGLE-01 | Phase 2 | Pending |
 | TOGGLE-02 | Phase 2 | Pending |
 | TOGGLE-03 | Phase 2 | Pending |
