@@ -25,17 +25,17 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 ## Current Position
 
-Phase: 3 of 4 (Profiles) — COMPLETE
-Plan: 2 of 2 in current phase (done)
-Status: Phase 3 Complete
-Last activity: 2026-03-05 — Completed 03-02-PLAN.md (Profile Frontend)
+Phase: 4 of 4 (Loose-File Games) — IN PROGRESS
+Plan: 1 of 3 in current phase (done)
+Status: Executing Phase 4
+Last activity: 2026-03-05 — Completed 04-01-PLAN.md (Loose-File Backend)
 
-Progress: [██████████] 100%
+Progress: [████████░░] 87%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: 6min
 - Total execution time: 1.13 hours
 
@@ -61,6 +61,7 @@ Progress: [██████████] 100%
 | Phase 02 P04 | 3min | 3 tasks | 6 files |
 | Phase 03 P01 | 4min | 2 tasks | 8 files |
 | Phase 03 P02 | 8min | 3 tasks | 7 files |
+| Phase 04 P01 | 5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,9 @@ Recent decisions affecting current work:
 - 03-02: loadProfile invalidates mods, sub-mods, and conflicts queries since mod states change
 - 03-02: Popover (not Select) for dropdown to allow mixed content (profile items + action buttons)
 - 03-02: lastLoadedProfileName resets to null on game switch for clean UX
+- 04-01: mod_type column on mods table (explicit, not inferred) for per-mod type tracking
+- 04-01: check_conflicts uses CTE with effective_path for both structured and loose mods
+- 04-01: copy_files_to_staging uses _N numeric suffix for filename collisions
 
 ### Pending Todos
 
@@ -111,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T19:39:52.266Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-loose-file-games/04-CONTEXT.md
+Last session: 2026-03-05T20:33:18Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: .planning/phases/04-loose-file-games/04-01-SUMMARY.md
