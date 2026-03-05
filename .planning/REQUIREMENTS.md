@@ -18,7 +18,7 @@
 - [x] **IMPORT-02**: App extracts .zip and records the full file manifest (every file path within the mod)
 - [x] **IMPORT-03**: App auto-groups .pak/.ucas/.utoc files by base stem as a single logical mod
 - [x] **IMPORT-04**: App detects sub-mod option folders (e.g. Option_ModName_Variant/) and registers them as independently toggleable options
-- [ ] **IMPORT-05**: User can see which files belong to each mod
+- [x] **IMPORT-05**: User can see which files belong to each mod
 - [x] **IMPORT-06**: App validates zip contents to prevent path traversal (ZipSlip protection)
 
 ### Mod Toggling
@@ -95,7 +95,7 @@
 | IMPORT-02 | Phase 2 | Complete |
 | IMPORT-03 | Phase 2 | Complete |
 | IMPORT-04 | Phase 2 | Complete |
-| IMPORT-05 | Phase 2 | Pending |
+| IMPORT-05 | Phase 2 | Complete |
 | IMPORT-06 | Phase 2 | Complete |
 | TOGGLE-01 | Phase 2 | Complete |
 | TOGGLE-02 | Phase 2 | Complete |
