@@ -47,7 +47,7 @@
 ### Loose-File Games
 
 - [x] **LOOSE-01**: User can add a game configured for loose-file (mishmash) mod structure
-- [ ] **LOOSE-02**: User can manually tag which files belong to a mod when importing for loose-file games
+- [x] **LOOSE-02**: User can manually tag which files belong to a mod when importing for loose-file games
 - [x] **LOOSE-03**: User can specify destination paths for each file relative to the game root
 - [x] **LOOSE-04**: Toggling works the same way for loose-file mods (move to/from staging)
 
@@ -110,7 +110,7 @@
 | PROFILE-03 | Phase 3 | Complete |
 | PROFILE-04 | Phase 3 | Complete |
 | LOOSE-01 | Phase 4 | Complete |
-| LOOSE-02 | Phase 4 | Pending |
+| LOOSE-02 | Phase 4 | Complete |
 | LOOSE-03 | Phase 4 | Complete |
 | LOOSE-04 | Phase 4 | Complete |
 
