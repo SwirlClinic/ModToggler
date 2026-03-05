@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-05T17:39:03Z"
-last_activity: 2026-03-05 — Completed 03-01-PLAN.md (Profile Backend)
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-05T18:05:00Z"
+last_activity: 2026-03-05 — Completed 03-02-PLAN.md (Profile Frontend)
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 12
-  completed_plans: 11
-  percent: 83
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Users can quickly toggle mods on and off without manually moving files, with confidence the app tracks what belongs to which mod.
-**Current focus:** Phase 3 — Profiles
+**Current focus:** Phase 3 complete — ready for Phase 4
 
 ## Current Position
 
-Phase: 3 of 4 (Profiles)
-Plan: 1 of 2 in current phase
-Status: Executing Phase 3
-Last activity: 2026-03-05 — Completed 03-01-PLAN.md (Profile Backend)
+Phase: 3 of 4 (Profiles) — COMPLETE
+Plan: 2 of 2 in current phase (done)
+Status: Phase 3 Complete
+Last activity: 2026-03-05 — Completed 03-02-PLAN.md (Profile Frontend)
 
-Progress: [████████░░] 83%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 12
 - Average duration: 6min
-- Total execution time: 1.00 hours
+- Total execution time: 1.13 hours
 
 **By Phase:**
 
@@ -45,10 +45,10 @@ Progress: [████████░░] 83%
 |-------|-------|-------|----------|
 | 1-Foundation | 5/5 | 44min | 9min |
 | 2-Core-Mod-Loop | 3/5 | 12min | 4min |
-| 3-Profiles | 1/2 | 4min | 4min |
+| 3-Profiles | 2/2 | 12min | 6min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (3min), 02-02 (6min), 02-03 (3min), 02-04 (3min), 03-01 (4min)
+- Last 5 plans: 02-02 (6min), 02-03 (3min), 02-04 (3min), 03-01 (4min), 03-02 (8min)
 - Trend: consistent
 
 *Updated after each plan completion*
@@ -60,6 +60,7 @@ Progress: [████████░░] 83%
 | Phase 02 P03 | 3min | 2 tasks | 5 files |
 | Phase 02 P04 | 3min | 3 tasks | 6 files |
 | Phase 03 P01 | 4min | 2 tasks | 8 files |
+| Phase 03 P02 | 8min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,10 @@ Recent decisions affecting current work:
 - 03-01: save_profile uses user_enabled for sub-mod capture (user intent, not effective state)
 - 03-01: apply_profile processes disables before enables to avoid spurious conflicts
 - 03-01: Mods not in profile (imported after save) are disabled during apply
+- 03-02: Profile hooks follow exact useMods.ts unwrap/React Query pattern for consistency
+- 03-02: loadProfile invalidates mods, sub-mods, and conflicts queries since mod states change
+- 03-02: Popover (not Select) for dropdown to allow mixed content (profile items + action buttons)
+- 03-02: lastLoadedProfileName resets to null on game switch for clean UX
 
 ### Pending Todos
 
@@ -106,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T17:39:03Z
-Stopped at: Completed 03-01-PLAN.md
-Resume file: .planning/phases/03-profiles/03-01-SUMMARY.md
+Last session: 2026-03-05T18:05:00Z
+Stopped at: Completed 03-02-PLAN.md
+Resume file: .planning/phases/03-profiles/03-02-SUMMARY.md
