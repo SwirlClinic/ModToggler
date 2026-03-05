@@ -64,7 +64,11 @@ Plans:
   2. User can load a saved profile and the app enables/disables mods to match it
   3. User can delete a profile
   4. Profiles are scoped per game — game A's profiles do not appear in game B's profile list
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Profile backend: DB migration, CRUD queries, save/apply service, Tauri commands
+- [ ] 03-02-PLAN.md — Profile frontend: React Query hooks, Zustand state, dropdown, save/manage dialogs, ModList integration
 
 ### Phase 4: Loose-File Games
 **Goal**: Users can manage mods for games where mod files are scattered across the game root
@@ -85,5 +89,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 5/5 | Complete | 2026-03-05 |
 | 2. Core Mod Loop | 4/5 | In Progress|  |
-| 3. Profiles | 0/TBD | Not started | - |
+| 3. Profiles | 0/2 | Not started | - |
 | 4. Loose-File Games | 0/TBD | Not started | - |
