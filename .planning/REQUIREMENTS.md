@@ -54,8 +54,8 @@
 ### Reliability
 
 - [ ] **RELIAB-01**: App performs integrity scan on startup to detect files moved outside the app (antivirus, manual moves)
-- [ ] **RELIAB-02**: App handles cross-drive file moves gracefully (copy+delete with progress indication when rename fails)
-- [ ] **RELIAB-03**: App provides clear error messages when file operations fail (permissions, missing files)
+- [x] **RELIAB-02**: App handles cross-drive file moves gracefully (copy+delete with progress indication when rename fails)
+- [x] **RELIAB-03**: App provides clear error messages when file operations fail (permissions, missing files)
 
 ## v2 Requirements
 
@@ -89,8 +89,8 @@
 | TOGGLE-04 | Phase 1 | Complete |
 | TOGGLE-06 | Phase 1 | Complete |
 | RELIAB-01 | Phase 1 | Pending |
-| RELIAB-02 | Phase 1 | Pending |
-| RELIAB-03 | Phase 1 | Pending |
+| RELIAB-02 | Phase 1 | Complete |
+| RELIAB-03 | Phase 1 | Complete |
 | IMPORT-01 | Phase 2 | Pending |
 | IMPORT-02 | Phase 2 | Pending |
 | IMPORT-03 | Phase 2 | Pending |

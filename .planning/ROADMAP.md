@@ -76,7 +76,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/5 | In progress | - |
+| 1. Foundation | 2/5 | In Progress|  |
 | 2. Core Mod Loop | 0/TBD | Not started | - |
 | 3. Profiles | 0/TBD | Not started | - |
 | 4. Loose-File Games | 0/TBD | Not started | - |
