@@ -26,9 +26,9 @@
 - [ ] **TOGGLE-01**: User can toggle a mod on/off with one click
 - [ ] **TOGGLE-02**: Disabling a mod moves all its files from the game directory to the app-managed staging folder (~/.modtoggler/disabled/[game]/)
 - [ ] **TOGGLE-03**: Enabling a mod moves its files back from staging to the game directory
-- [ ] **TOGGLE-04**: Mod enabled/disabled state persists across app restarts
+- [x] **TOGGLE-04**: Mod enabled/disabled state persists across app restarts
 - [ ] **TOGGLE-05**: User can toggle individual sub-mod options on/off independently of the parent mod
-- [ ] **TOGGLE-06**: App uses a transaction journal to ensure file moves are atomic — crash mid-toggle can be recovered
+- [x] **TOGGLE-06**: App uses a transaction journal to ensure file moves are atomic — crash mid-toggle can be recovered
 - [ ] **TOGGLE-07**: User can permanently delete a mod and all its files (from staging or game directory)
 
 ### Conflict Detection
@@ -86,8 +86,8 @@
 | GAME-02 | Phase 1 | Pending |
 | GAME-03 | Phase 1 | Pending |
 | GAME-04 | Phase 1 | Pending |
-| TOGGLE-04 | Phase 1 | Pending |
-| TOGGLE-06 | Phase 1 | Pending |
+| TOGGLE-04 | Phase 1 | Complete |
+| TOGGLE-06 | Phase 1 | Complete |
 | RELIAB-01 | Phase 1 | Pending |
 | RELIAB-02 | Phase 1 | Pending |
 | RELIAB-03 | Phase 1 | Pending |
