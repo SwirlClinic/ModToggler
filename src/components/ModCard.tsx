@@ -4,17 +4,31 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
+  FolderPlus,
   Loader2,
   Trash2,
+  X,
 } from 'lucide-react'
+import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import SubModOptions from './SubModOptions'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import FileMapTable, { type FileMapping } from './FileMapTable'
 import {
   useModFiles,
   useCheckConflicts,
   useToggleMod,
   useDeleteMod,
+  useAddFilesToMod,
+  useRemoveFileFromMod,
 } from '../hooks/useMods'
 import type { ModRecord, ConflictInfo } from '../bindings'
 
@@ -34,11 +48,17 @@ export default function ModCard({
   onConflictDetected,
 }: ModCardProps) {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [addFilesOpen, setAddFilesOpen] = useState(false)
+  const [addFilesMappings, setAddFilesMappings] = useState<FileMapping[]>([])
+
+  const isLoose = mod.mod_type === 'loose'
 
   const { data: files = [] } = useModFiles(expanded ? mod.id : null)
   const { data: conflicts = [] } = useCheckConflicts(mod.id, gameId)
   const toggleMod = useToggleMod()
   const deleteMod = useDeleteMod()
+  const addFiles = useAddFilesToMod()
+  const removeFile = useRemoveFileFromMod()
 
   const hasConflicts = conflicts.length > 0
   const isMutating = toggleMod.isPending || deleteMod.isPending
@@ -64,6 +84,40 @@ export default function ModCard({
     } else {
       setDeleteConfirm(true)
     }
+  }
+
+  async function handleAddFiles(e: React.MouseEvent) {
+    e.stopPropagation()
+    const selected = await openDialog({ multiple: true, title: 'Select files to add' })
+    if (selected && Array.isArray(selected) && selected.length > 0) {
+      setAddFilesMappings(
+        selected.map((path) => {
+          const fileName = path.split(/[/\\]/).pop() ?? path
+          return { fileName, sourcePath: path, destinationPath: '/', selected: true }
+        }),
+      )
+      setAddFilesOpen(true)
+    }
+  }
+
+  function handleConfirmAddFiles() {
+    if (addFilesMappings.length === 0) return
+    addFiles.mutate(
+      {
+        modId: mod.id,
+        files: addFilesMappings.map((f) => ({
+          source_path: f.sourcePath,
+          destination_path: f.destinationPath,
+          file_name: f.fileName,
+        })),
+      },
+      { onSuccess: () => setAddFilesOpen(false) },
+    )
+  }
+
+  function handleRemoveFile(e: React.MouseEvent, fileEntryId: number) {
+    e.stopPropagation()
+    removeFile.mutate(fileEntryId)
   }
 
   function handleConflictBadgeClick(e: React.MouseEvent) {
@@ -148,16 +202,49 @@ export default function ModCard({
             <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               <FileText className="h-3 w-3" />
               <span>Files ({files.length})</span>
+              {isLoose && (
+                <button
+                  type="button"
+                  onClick={handleAddFiles}
+                  className="ml-auto p-0.5 rounded hover:bg-muted transition-colors"
+                  aria-label="Add files to mod"
+                >
+                  <FolderPlus className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                </button>
+              )}
             </div>
             {files.length > 0 ? (
               <div className="max-h-40 overflow-y-auto rounded-md bg-muted/20 p-2">
                 {files.map((f) => (
                   <div
                     key={f.id}
-                    className="text-xs text-muted-foreground font-mono py-0.5 truncate"
-                    title={f.relative_path}
+                    className="group flex items-center gap-1 py-0.5"
                   >
-                    {f.relative_path}
+                    <span
+                      className="flex-1 min-w-0 text-xs text-muted-foreground font-mono truncate"
+                      title={isLoose && f.destination_path ? `${f.destination_path}/${f.relative_path}` : f.relative_path}
+                    >
+                      {f.relative_path}
+                    </span>
+                    {isLoose && f.destination_path && (
+                      <span
+                        className="shrink-0 text-[10px] text-muted-foreground/60 font-mono bg-muted/40 px-1 rounded"
+                        title={`Destination: ${f.destination_path}`}
+                      >
+                        {f.destination_path}
+                      </span>
+                    )}
+                    {isLoose && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleRemoveFile(e, f.id)}
+                        disabled={removeFile.isPending}
+                        className="shrink-0 opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-destructive/20 transition-all"
+                        aria-label={`Remove ${f.relative_path}`}
+                      >
+                        <X className="h-3 w-3 text-destructive" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -166,8 +253,33 @@ export default function ModCard({
             )}
           </div>
 
-          {/* Sub-mod options */}
-          <SubModOptions modId={mod.id} parentEnabled={mod.enabled} />
+          {/* Sub-mod options (hidden for loose mods) */}
+          {!isLoose && <SubModOptions modId={mod.id} parentEnabled={mod.enabled} />}
+
+          {/* Add files dialog for loose mods */}
+          {isLoose && (
+            <Dialog open={addFilesOpen} onOpenChange={setAddFilesOpen}>
+              <DialogContent className="max-w-md" onClick={(e) => e.stopPropagation()}>
+                <DialogHeader>
+                  <DialogTitle>Add Files to {mod.name}</DialogTitle>
+                </DialogHeader>
+                <FileMapTable files={addFilesMappings} onChange={setAddFilesMappings} />
+                <DialogFooter>
+                  <Button variant="outline" size="sm" onClick={() => setAddFilesOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleConfirmAddFiles}
+                    disabled={addFiles.isPending || addFilesMappings.length === 0}
+                  >
+                    {addFiles.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Add {addFilesMappings.length} Files
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
 
           {/* Delete button */}
           <div className="mt-4 flex justify-end">

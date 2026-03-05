@@ -28,7 +28,14 @@ export default function GameSelector({ games }: Props) {
       <SelectContent>
         {games.map((g) => (
           <SelectItem key={g.id} value={String(g.id)}>
-            {g.name}
+            <span className="flex items-center gap-1.5">
+              {g.name}
+              {g.mod_structure === 'loose' && (
+                <span className="text-[10px] font-medium bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
+                  Loose
+                </span>
+              )}
+            </span>
           </SelectItem>
         ))}
       </SelectContent>

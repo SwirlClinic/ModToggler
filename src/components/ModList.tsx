@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import EmptyModView from './EmptyModView'
 import ModCard from './ModCard'
 import ImportDialog from './ImportDialog'
+import LooseImportDialog from './LooseImportDialog'
 import ConflictDialog from './ConflictDialog'
 import ProfileDropdown from './ProfileDropdown'
 import { useMods, useToggleMod } from '../hooks/useMods'
@@ -21,9 +22,13 @@ export default function ModList() {
 
   const [expandedModId, setExpandedModId] = useState<number | null>(null)
 
-  // Import dialog state
+  // Import dialog state (structured mods)
   const [importOpen, setImportOpen] = useState(false)
   const [importZipPath, setImportZipPath] = useState('')
+
+  // Loose import dialog state
+  const [looseImportOpen, setLooseImportOpen] = useState(false)
+  const [looseImportZipPath, setLooseImportZipPath] = useState<string | undefined>(undefined)
 
   // Conflict dialog state
   const [conflictOpen, setConflictOpen] = useState(false)
@@ -38,10 +43,18 @@ export default function ModList() {
   const [isDragOver, setIsDragOver] = useState(false)
   const lastDropRef = useRef<{ path: string; time: number }>({ path: '', time: 0 })
 
+  const game = games.find((g) => g.id === activeGameId)
+  const isLooseGame = game?.mod_structure === 'loose'
+
   const openImportForPath = useCallback((zipPath: string) => {
-    setImportZipPath(zipPath)
-    setImportOpen(true)
-  }, [])
+    if (game?.mod_structure === 'loose') {
+      setLooseImportZipPath(zipPath)
+      setLooseImportOpen(true)
+    } else {
+      setImportZipPath(zipPath)
+      setImportOpen(true)
+    }
+  }, [game?.mod_structure])
 
   // Tauri drag-and-drop listeners
   useEffect(() => {
@@ -80,16 +93,20 @@ export default function ModList() {
     }
   }, [openImportForPath])
 
-  const game = games.find((g) => g.id === activeGameId)
-
   async function handleImportClick() {
-    const selected = await open({
-      multiple: false,
-      filters: [{ name: 'Zip Archives', extensions: ['zip'] }],
-    })
-    if (selected) {
-      setImportZipPath(selected as string)
-      setImportOpen(true)
+    if (isLooseGame) {
+      // Open loose import dialog without zipPath (manual file picker flow)
+      setLooseImportZipPath(undefined)
+      setLooseImportOpen(true)
+    } else {
+      const selected = await open({
+        multiple: false,
+        filters: [{ name: 'Zip Archives', extensions: ['zip'] }],
+      })
+      if (selected) {
+        setImportZipPath(selected as string)
+        setImportOpen(true)
+      }
     }
   }
 
@@ -172,13 +189,23 @@ export default function ModList() {
         </div>
       )}
 
-      {/* Import dialog */}
-      {activeGameId && (
+      {/* Import dialog (structured mods) */}
+      {activeGameId && !isLooseGame && (
         <ImportDialog
           open={importOpen}
           onOpenChange={setImportOpen}
           zipPath={importZipPath}
           gameId={activeGameId}
+        />
+      )}
+
+      {/* Import dialog (loose-file mods) */}
+      {activeGameId && isLooseGame && (
+        <LooseImportDialog
+          open={looseImportOpen}
+          onOpenChange={setLooseImportOpen}
+          gameId={activeGameId}
+          zipPath={looseImportZipPath}
         />
       )}
 
