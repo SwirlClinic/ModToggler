@@ -67,10 +67,17 @@ pub fn run() {
                 // This mirrors the DDL from db::migrations but runs on the pool Rust commands use.
                 // Using raw_sql to support multi-statement migrations (e.g., CREATE TABLE + CREATE INDEX).
                 for migration in db::migrations::get_migrations() {
-                    sqlx::raw_sql(migration.sql)
-                        .execute(&pool)
-                        .await
-                        .expect("Failed to run migration");
+                    match sqlx::raw_sql(migration.sql).execute(&pool).await {
+                        Ok(_) => {}
+                        Err(e) => {
+                            let msg = e.to_string();
+                            // ALTER TABLE ADD COLUMN is not idempotent in SQLite —
+                            // ignore "duplicate column" errors on subsequent startups.
+                            if !msg.contains("duplicate column name") {
+                                panic!("Failed to run migration {}: {}", migration.description, e);
+                            }
+                        }
+                    }
                 }
 
                 pool

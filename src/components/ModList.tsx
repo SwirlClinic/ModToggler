@@ -123,10 +123,6 @@ export default function ModList() {
     )
   }
 
-  if (mods.length === 0) {
-    return <EmptyModView />
-  }
-
   return (
     <div className="flex flex-col h-full relative">
       {/* Header bar */}
@@ -140,9 +136,11 @@ export default function ModList() {
         </Button>
       </div>
 
-      {/* Mod cards */}
+      {/* Mod cards or empty state */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {mods.map((mod) => (
+        {mods.length === 0 ? (
+          <EmptyModView />
+        ) : mods.map((mod) => (
           <ModCard
             key={mod.id}
             mod={mod}
