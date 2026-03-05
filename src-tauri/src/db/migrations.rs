@@ -1,6 +1,6 @@
 // IMPORTANT: Version numbers must be globally unique and monotonically increasing.
 // NEVER reuse or insert between existing version numbers.
-// Next available version: 8
+// Next available version: 9
 
 use tauri_plugin_sql::{Migration, MigrationKind};
 
@@ -102,6 +102,13 @@ pub fn get_migrations() -> Vec<Migration> {
             CREATE INDEX IF NOT EXISTS idx_profile_entries_profile ON profile_entries(profile_id);",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 8,
+            description: "add_loose_file_support",
+            sql: "ALTER TABLE file_entries ADD COLUMN destination_path TEXT;
+            ALTER TABLE mods ADD COLUMN mod_type TEXT NOT NULL DEFAULT 'structured' CHECK(mod_type IN ('structured', 'loose'));",
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -110,8 +117,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn migration_count_is_seven() {
-        assert_eq!(get_migrations().len(), 7);
+    fn migration_count_is_eight() {
+        assert_eq!(get_migrations().len(), 8);
     }
 
     #[test]

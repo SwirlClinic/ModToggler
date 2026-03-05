@@ -41,6 +41,7 @@ pub struct ModRecord {
     pub name: String,
     pub enabled: bool,
     pub staged_path: String,
+    pub mod_type: String,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for ModRecord {
@@ -54,6 +55,7 @@ impl<'r> FromRow<'r, SqliteRow> for ModRecord {
                 val != 0
             },
             staged_path: row.try_get("staged_path")?,
+            mod_type: row.try_get("mod_type")?,
         })
     }
 }
@@ -64,6 +66,7 @@ pub struct FileEntry {
     pub mod_id: i64,
     pub relative_path: String,
     pub sub_mod_id: Option<i64>,
+    pub destination_path: Option<String>,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for FileEntry {
@@ -73,6 +76,7 @@ impl<'r> FromRow<'r, SqliteRow> for FileEntry {
             mod_id: row.try_get("mod_id")?,
             relative_path: row.try_get("relative_path")?,
             sub_mod_id: row.try_get("sub_mod_id")?,
+            destination_path: row.try_get("destination_path")?,
         })
     }
 }
@@ -288,7 +292,7 @@ pub async fn get_game(pool: &SqlitePool, game_id: i64) -> Result<GameRecord, App
 
 pub async fn list_all_mods(pool: &SqlitePool) -> Result<Vec<ModRecord>, AppError> {
     let rows = sqlx::query_as::<_, ModRecord>(
-        "SELECT id, game_id, name, enabled, staged_path FROM mods",
+        "SELECT id, game_id, name, enabled, staged_path, mod_type FROM mods",
     )
     .fetch_all(pool)
     .await
@@ -303,12 +307,23 @@ pub async fn insert_mod(
     name: &str,
     staged_path: &str,
 ) -> Result<ModRecord, AppError> {
+    insert_mod_with_type(pool, game_id, name, staged_path, "structured").await
+}
+
+pub async fn insert_mod_with_type(
+    pool: &SqlitePool,
+    game_id: i64,
+    name: &str,
+    staged_path: &str,
+    mod_type: &str,
+) -> Result<ModRecord, AppError> {
     let result = sqlx::query(
-        "INSERT INTO mods (game_id, name, staged_path) VALUES ($1, $2, $3)",
+        "INSERT INTO mods (game_id, name, staged_path, mod_type) VALUES ($1, $2, $3, $4)",
     )
     .bind(game_id)
     .bind(name)
     .bind(staged_path)
+    .bind(mod_type)
     .execute(pool)
     .await
     .map_err(|e| AppError::DatabaseError(e.to_string()))?;
@@ -321,12 +336,13 @@ pub async fn insert_mod(
         name: name.to_string(),
         enabled: false,
         staged_path: staged_path.to_string(),
+        mod_type: mod_type.to_string(),
     })
 }
 
 pub async fn get_mod(pool: &SqlitePool, mod_id: i64) -> Result<ModRecord, AppError> {
     sqlx::query_as::<_, ModRecord>(
-        "SELECT id, game_id, name, enabled, staged_path FROM mods WHERE id=$1",
+        "SELECT id, game_id, name, enabled, staged_path, mod_type FROM mods WHERE id=$1",
     )
     .bind(mod_id)
     .fetch_optional(pool)
@@ -340,7 +356,7 @@ pub async fn list_mods_for_game(
     game_id: i64,
 ) -> Result<Vec<ModRecord>, AppError> {
     let rows = sqlx::query_as::<_, ModRecord>(
-        "SELECT id, game_id, name, enabled, staged_path FROM mods WHERE game_id=$1 ORDER BY enabled DESC, name ASC",
+        "SELECT id, game_id, name, enabled, staged_path, mod_type FROM mods WHERE game_id=$1 ORDER BY enabled DESC, name ASC",
     )
     .bind(game_id)
     .fetch_all(pool)
@@ -384,7 +400,7 @@ pub async fn delete_mod_db(pool: &SqlitePool, mod_id: i64) -> Result<(), AppErro
 
 pub async fn list_file_entries(pool: &SqlitePool, mod_id: i64) -> Result<Vec<FileEntry>, AppError> {
     let rows = sqlx::query_as::<_, FileEntry>(
-        "SELECT id, mod_id, relative_path, sub_mod_id FROM file_entries WHERE mod_id=$1",
+        "SELECT id, mod_id, relative_path, sub_mod_id, destination_path FROM file_entries WHERE mod_id=$1",
     )
     .bind(mod_id)
     .fetch_all(pool)
@@ -399,7 +415,7 @@ pub async fn list_file_entries_for_sub_mod(
     sub_mod_id: i64,
 ) -> Result<Vec<FileEntry>, AppError> {
     let rows = sqlx::query_as::<_, FileEntry>(
-        "SELECT id, mod_id, relative_path, sub_mod_id FROM file_entries WHERE sub_mod_id=$1",
+        "SELECT id, mod_id, relative_path, sub_mod_id, destination_path FROM file_entries WHERE sub_mod_id=$1",
     )
     .bind(sub_mod_id)
     .fetch_all(pool)
@@ -415,12 +431,23 @@ pub async fn insert_file_entry(
     relative_path: &str,
     sub_mod_id: Option<i64>,
 ) -> Result<FileEntry, AppError> {
+    insert_file_entry_with_destination(pool, mod_id, relative_path, sub_mod_id, None).await
+}
+
+pub async fn insert_file_entry_with_destination(
+    pool: &SqlitePool,
+    mod_id: i64,
+    relative_path: &str,
+    sub_mod_id: Option<i64>,
+    destination_path: Option<&str>,
+) -> Result<FileEntry, AppError> {
     let result = sqlx::query(
-        "INSERT INTO file_entries (mod_id, relative_path, sub_mod_id) VALUES ($1, $2, $3)",
+        "INSERT INTO file_entries (mod_id, relative_path, sub_mod_id, destination_path) VALUES ($1, $2, $3, $4)",
     )
     .bind(mod_id)
     .bind(relative_path)
     .bind(sub_mod_id)
+    .bind(destination_path)
     .execute(pool)
     .await
     .map_err(|e| AppError::DatabaseError(e.to_string()))?;
@@ -432,7 +459,37 @@ pub async fn insert_file_entry(
         mod_id,
         relative_path: relative_path.to_string(),
         sub_mod_id,
+        destination_path: destination_path.map(|s| s.to_string()),
     })
+}
+
+pub async fn delete_file_entry(
+    pool: &SqlitePool,
+    file_entry_id: i64,
+) -> Result<(), AppError> {
+    let result = sqlx::query("DELETE FROM file_entries WHERE id=$1")
+        .bind(file_entry_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::ModNotFound(format!("File entry ID {} not found", file_entry_id)));
+    }
+    Ok(())
+}
+
+pub async fn add_file_entries_to_mod(
+    pool: &SqlitePool,
+    mod_id: i64,
+    entries: &[(&str, Option<&str>)], // (relative_path, destination_path)
+) -> Result<Vec<FileEntry>, AppError> {
+    let mut results = Vec::new();
+    for (relative_path, destination_path) in entries {
+        let entry = insert_file_entry_with_destination(pool, mod_id, relative_path, None, *destination_path).await?;
+        results.push(entry);
+    }
+    Ok(results)
 }
 
 // ─── Sub-Mod Queries ───
@@ -516,23 +573,39 @@ pub async fn check_conflicts(
     mod_id: i64,
     game_id: i64,
 ) -> Result<Vec<ConflictInfo>, AppError> {
+    // Compute effective game-side path for conflict comparison:
+    // - Structured mods: relative_path is the game-side path
+    // - Loose mods: destination_path || '/' || relative_path (filename)
     let rows = sqlx::query_as::<_, ConflictInfo>(
-        "SELECT
-            fe_other.mod_id AS conflicting_mod_id,
+        "WITH effective AS (
+            SELECT
+                fe.id,
+                fe.mod_id,
+                fe.relative_path,
+                fe.sub_mod_id,
+                CASE
+                    WHEN fe.destination_path IS NOT NULL AND fe.destination_path != '' AND fe.destination_path != '/'
+                        THEN fe.destination_path || '/' || fe.relative_path
+                    ELSE fe.relative_path
+                END AS effective_path
+            FROM file_entries fe
+        )
+        SELECT
+            e_other.mod_id AS conflicting_mod_id,
             m_other.name AS conflicting_mod_name,
-            fe_target.relative_path
-        FROM file_entries fe_target
-        JOIN file_entries fe_other
-            ON fe_target.relative_path = fe_other.relative_path
-            AND fe_target.mod_id != fe_other.mod_id
-        JOIN mods m_other ON fe_other.mod_id = m_other.id
-        WHERE fe_target.mod_id = $1
+            e_target.relative_path
+        FROM effective e_target
+        JOIN effective e_other
+            ON e_target.effective_path = e_other.effective_path
+            AND e_target.mod_id != e_other.mod_id
+        JOIN mods m_other ON e_other.mod_id = m_other.id
+        WHERE e_target.mod_id = $1
             AND m_other.game_id = $2
             AND m_other.enabled = 1
-            AND (fe_other.sub_mod_id IS NULL OR EXISTS (
-                SELECT 1 FROM sub_mods sm WHERE sm.id = fe_other.sub_mod_id AND sm.enabled = 1
+            AND (e_other.sub_mod_id IS NULL OR EXISTS (
+                SELECT 1 FROM sub_mods sm WHERE sm.id = e_other.sub_mod_id AND sm.enabled = 1
             ))
-        ORDER BY fe_target.relative_path",
+        ORDER BY e_target.relative_path",
     )
     .bind(mod_id)
     .bind(game_id)
@@ -802,6 +875,7 @@ mod tests {
             name: "Cool Mod".into(),
             enabled: true,
             staged_path: "C:/staging/cool-mod".into(),
+            mod_type: "structured".into(),
         };
         let json = serde_json::to_string(&rec).unwrap();
         assert!(json.contains("Cool Mod"));
@@ -1184,6 +1258,111 @@ mod tests {
         assert_eq!(entries[0].mod_id, m.id);
         assert!(entries[0].enabled);
         assert_eq!(entries[0].sub_mod_states.as_deref(), Some(sub_states));
+    }
+
+    // ─── Loose File Tests ───
+
+    #[tokio::test]
+    async fn test_insert_mod_with_type_creates_loose_mod() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod_with_type(&pool, game.id, "Loose Mod", "C:/staging/loose", "loose").await.unwrap();
+        assert_eq!(m.mod_type, "loose");
+        assert_eq!(m.name, "Loose Mod");
+        // Verify roundtrip via get_mod
+        let fetched = get_mod(&pool, m.id).await.unwrap();
+        assert_eq!(fetched.mod_type, "loose");
+    }
+
+    #[tokio::test]
+    async fn test_insert_mod_default_type_is_structured() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Normal Mod", "C:/staging/normal").await.unwrap();
+        assert_eq!(m.mod_type, "structured");
+    }
+
+    #[tokio::test]
+    async fn test_insert_file_entry_with_destination_stores_path() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod_with_type(&pool, game.id, "Loose", "C:/staging/loose", "loose").await.unwrap();
+        let fe = insert_file_entry_with_destination(&pool, m.id, "config.ini", None, Some("bin/scripts")).await.unwrap();
+        assert_eq!(fe.destination_path.as_deref(), Some("bin/scripts"));
+        assert_eq!(fe.relative_path, "config.ini");
+    }
+
+    #[tokio::test]
+    async fn test_list_file_entries_returns_destination_path() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod_with_type(&pool, game.id, "Loose", "C:/staging/loose", "loose").await.unwrap();
+        insert_file_entry_with_destination(&pool, m.id, "config.ini", None, Some("bin/scripts")).await.unwrap();
+        insert_file_entry_with_destination(&pool, m.id, "readme.txt", None, None).await.unwrap();
+
+        let entries = list_file_entries(&pool, m.id).await.unwrap();
+        assert_eq!(entries.len(), 2);
+        let config = entries.iter().find(|e| e.relative_path == "config.ini").unwrap();
+        assert_eq!(config.destination_path.as_deref(), Some("bin/scripts"));
+        let readme = entries.iter().find(|e| e.relative_path == "readme.txt").unwrap();
+        assert!(readme.destination_path.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_check_conflicts_loose_mods_by_destination_path() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m1 = insert_mod_with_type(&pool, game.id, "Loose A", "C:/staging/a", "loose").await.unwrap();
+        let m2 = insert_mod_with_type(&pool, game.id, "Loose B", "C:/staging/b", "loose").await.unwrap();
+        // Both mods have a file that maps to the same destination
+        insert_file_entry_with_destination(&pool, m1.id, "config.ini", None, Some("bin/scripts")).await.unwrap();
+        insert_file_entry_with_destination(&pool, m2.id, "config.ini", None, Some("bin/scripts")).await.unwrap();
+        // This one goes to a different destination - no conflict
+        insert_file_entry_with_destination(&pool, m1.id, "data.txt", None, Some("data")).await.unwrap();
+
+        // Enable Mod B
+        update_mod_enabled(&pool, m2.id, true).await.unwrap();
+
+        let conflicts = check_conflicts(&pool, m1.id, game.id).await.unwrap();
+        assert_eq!(conflicts.len(), 1);
+        assert_eq!(conflicts[0].conflicting_mod_name, "Loose B");
+        assert_eq!(conflicts[0].relative_path, "config.ini");
+    }
+
+    #[tokio::test]
+    async fn test_delete_file_entry_removes_single_entry() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let fe1 = insert_file_entry(&pool, m.id, "file1.pak", None).await.unwrap();
+        let _fe2 = insert_file_entry(&pool, m.id, "file2.pak", None).await.unwrap();
+
+        delete_file_entry(&pool, fe1.id).await.unwrap();
+
+        let entries = list_file_entries(&pool, m.id).await.unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].relative_path, "file2.pak");
+    }
+
+    #[tokio::test]
+    async fn test_add_file_entries_to_mod_inserts_multiple() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod_with_type(&pool, game.id, "Loose", "C:/staging/loose", "loose").await.unwrap();
+
+        let entries_input: Vec<(&str, Option<&str>)> = vec![
+            ("file1.txt", Some("data")),
+            ("file2.ini", Some("config")),
+            ("file3.dll", None),
+        ];
+        let results = add_file_entries_to_mod(&pool, m.id, &entries_input).await.unwrap();
+        assert_eq!(results.len(), 3);
+        assert_eq!(results[0].destination_path.as_deref(), Some("data"));
+        assert_eq!(results[1].destination_path.as_deref(), Some("config"));
+        assert!(results[2].destination_path.is_none());
+
+        let all = list_file_entries(&pool, m.id).await.unwrap();
+        assert_eq!(all.len(), 3);
     }
 
     #[tokio::test]

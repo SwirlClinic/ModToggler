@@ -256,12 +256,14 @@ mod tests {
                 mod_id: 1,
                 relative_path: "textures/skin.pak".to_string(),
                 sub_mod_id: None,
+                destination_path: None,
             },
             FileEntry {
                 id: 2,
                 mod_id: 1,
                 relative_path: "meshes/body.pak".to_string(),
                 sub_mod_id: None,
+                destination_path: None,
             },
         ];
         let staging = PathBuf::from("C:/staging/mymod");
@@ -281,6 +283,7 @@ mod tests {
             mod_id: 1,
             relative_path: "data.pak".to_string(),
             sub_mod_id: None,
+            destination_path: None,
         }];
         let staging = PathBuf::from("C:/staging/mod");
         let game = PathBuf::from("C:/game/Mods");
@@ -299,18 +302,21 @@ mod tests {
                 mod_id: 1,
                 relative_path: "main.pak".to_string(),
                 sub_mod_id: None,
+                destination_path: None,
             },
             FileEntry {
                 id: 2,
                 mod_id: 1,
                 relative_path: "Option_A/extra.pak".to_string(),
                 sub_mod_id: Some(10),
+                destination_path: None,
             },
             FileEntry {
                 id: 3,
                 mod_id: 1,
                 relative_path: "Option_B/other.pak".to_string(),
                 sub_mod_id: Some(20),
+                destination_path: None,
             },
         ];
 
@@ -334,12 +340,14 @@ mod tests {
                 mod_id: 1,
                 relative_path: "main.pak".to_string(),
                 sub_mod_id: None,
+                destination_path: None,
             },
             FileEntry {
                 id: 2,
                 mod_id: 1,
                 relative_path: "Option_A/extra.pak".to_string(),
                 sub_mod_id: Some(10),
+                destination_path: None,
             },
         ];
 
