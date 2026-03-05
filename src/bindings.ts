@@ -123,6 +123,50 @@ async checkConflictsCmd(modId: number, gameId: number) : Promise<Result<Conflict
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Import loose files into a new mod: copy to staging, create DB records.
+ */
+async importLooseFiles(gameId: number, modName: string, files: LooseFileInput[]) : Promise<Result<ImportResult, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("import_loose_files", { gameId, modName, files }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Import loose files from a zip: extract, copy selected files to staging, create DB records.
+ */
+async importLooseZip(gameId: number, zipPath: string, modName: string, selectedFiles: LooseFileInput[]) : Promise<Result<ImportResult, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("import_loose_zip", { gameId, zipPath, modName, selectedFiles }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Add files to an existing loose-file mod.
+ */
+async addFilesToMod(modId: number, files: LooseFileInput[]) : Promise<Result<number, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("add_files_to_mod", { modId, files }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Remove a single file from a loose-file mod (deletes from staging/game dir and DB).
+ */
+async removeFileFromMod(fileEntryId: number) : Promise<Result<null, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("remove_file_from_mod", { fileEntryId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async saveProfileCmd(gameId: number, name: string) : Promise<Result<ProfileRecord, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("save_profile_cmd", { gameId, name }) };
@@ -224,7 +268,7 @@ export type AppError =
  */
 export type ApplyProfileResult = { skipped_mods: string[] }
 export type ConflictInfo = { conflicting_mod_id: number; conflicting_mod_name: string; relative_path: string }
-export type FileEntry = { id: number; mod_id: number; relative_path: string; sub_mod_id: number | null }
+export type FileEntry = { id: number; mod_id: number; relative_path: string; sub_mod_id: number | null; destination_path: string | null }
 /**
  * A single file move pair tracked in the journal.
  * `done` is updated to true after each individual file is successfully moved.
@@ -240,7 +284,11 @@ export type ImportResult = { mod_record: ModRecord; file_count: number; sub_mods
  */
 export type IncompleteJournalEntry = { id: number; mod_id: number; operation: string; files: FilePair[] }
 export type IntegrityScanResult = { missing_from_game: ModRecord[]; missing_from_staging: ModRecord[]; incomplete_journals: IncompleteJournalEntry[] }
-export type ModRecord = { id: number; game_id: number; name: string; enabled: boolean; staged_path: string }
+/**
+ * Input for a single loose file: where it comes from, where it goes in the game tree, and its name.
+ */
+export type LooseFileInput = { source_path: string; destination_path: string; file_name: string }
+export type ModRecord = { id: number; game_id: number; name: string; enabled: boolean; staged_path: string; mod_type: string }
 export type ProfileRecord = { id: number; game_id: number; name: string; created_at: number; updated_at: number }
 export type SubModRecord = { id: number; mod_id: number; name: string; folder_name: string; enabled: boolean; user_enabled: boolean }
 

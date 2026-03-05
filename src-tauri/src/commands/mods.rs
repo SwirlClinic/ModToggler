@@ -158,8 +158,252 @@ pub async fn check_conflicts_cmd(
     queries::check_conflicts(&pool, mod_id, game_id).await
 }
 
+/// Input for a single loose file: where it comes from, where it goes in the game tree, and its name.
+#[derive(Debug, serde::Deserialize, specta::Type)]
+pub struct LooseFileInput {
+    pub source_path: String,      // absolute path to source file
+    pub destination_path: String,  // relative dir under game root (e.g., "bin/scripts", "/" for root)
+    pub file_name: String,         // original filename
+}
+
+/// Import loose files into a new mod: copy to staging, create DB records.
+#[tauri::command]
+#[specta::specta]
+pub async fn import_loose_files(
+    app: AppHandle,
+    pool: tauri::State<'_, SqlitePool>,
+    game_id: i64,
+    mod_name: String,
+    files: Vec<LooseFileInput>,
+) -> Result<ImportResult, AppError> {
+    let game = queries::get_game(&pool, game_id).await?;
+
+    // Create mod-specific staging subdir
+    let slug = slug_from_name(&mod_name);
+    let mod_staging = PathBuf::from(&game.staging_dir).join(&slug);
+    std::fs::create_dir_all(&mod_staging)?;
+
+    // Build source pairs for copy_files_to_staging: (absolute_source, desired_filename)
+    let source_pairs: Vec<(String, String)> = files
+        .iter()
+        .map(|f| (f.source_path.clone(), f.file_name.clone()))
+        .collect();
+
+    let staging_clone = mod_staging.clone();
+    let actual_names = tokio::task::spawn_blocking(move || {
+        import::copy_files_to_staging(&source_pairs, &staging_clone)
+    })
+    .await
+    .map_err(|e| AppError::IoError(format!("Spawn blocking failed: {}", e)))??;
+
+    // Insert mod record with mod_type="loose"
+    let mod_record = queries::insert_mod_with_type(
+        &pool,
+        game_id,
+        &mod_name,
+        &mod_staging.display().to_string(),
+        "loose",
+    )
+    .await?;
+
+    // Insert file_entries with destination_path for each file
+    for (i, actual_name) in actual_names.iter().enumerate() {
+        let dest = &files[i].destination_path;
+        queries::insert_file_entry_with_destination(
+            &pool,
+            mod_record.id,
+            actual_name,
+            None,
+            Some(dest),
+        )
+        .await?;
+    }
+
+    let _ = app;
+
+    Ok(ImportResult {
+        mod_record,
+        file_count: actual_names.len(),
+        sub_mods: Vec::new(),
+        has_recognized_files: false,
+    })
+}
+
+/// Import loose files from a zip: extract, copy selected files to staging, create DB records.
+#[tauri::command]
+#[specta::specta]
+pub async fn import_loose_zip(
+    app: AppHandle,
+    pool: tauri::State<'_, SqlitePool>,
+    game_id: i64,
+    zip_path: String,
+    mod_name: String,
+    selected_files: Vec<LooseFileInput>,
+) -> Result<ImportResult, AppError> {
+    let game = queries::get_game(&pool, game_id).await?;
+
+    // Create mod-specific staging subdir
+    let slug = slug_from_name(&mod_name);
+    let mod_staging = PathBuf::from(&game.staging_dir).join(&slug);
+    std::fs::create_dir_all(&mod_staging)?;
+
+    // Extract zip to a temporary directory first
+    let temp_path = std::env::temp_dir().join(format!("modtoggler_zip_{}", std::process::id()));
+    std::fs::create_dir_all(&temp_path)?;
+    let zip = PathBuf::from(&zip_path);
+
+    tokio::task::spawn_blocking(move || {
+        import::extract_zip_to_staging(&zip, &temp_path)
+    })
+    .await
+    .map_err(|e| AppError::IoError(format!("Spawn blocking failed: {}", e)))??;
+
+    // Build source pairs from selected_files: source_path points to extracted file in temp dir
+    let source_pairs: Vec<(String, String)> = selected_files
+        .iter()
+        .map(|f| (f.source_path.clone(), f.file_name.clone()))
+        .collect();
+
+    let staging_clone = mod_staging.clone();
+    let actual_names = tokio::task::spawn_blocking(move || {
+        import::copy_files_to_staging(&source_pairs, &staging_clone)
+    })
+    .await
+    .map_err(|e| AppError::IoError(format!("Spawn blocking failed: {}", e)))??;
+
+    // Insert mod record with mod_type="loose"
+    let mod_record = queries::insert_mod_with_type(
+        &pool,
+        game_id,
+        &mod_name,
+        &mod_staging.display().to_string(),
+        "loose",
+    )
+    .await?;
+
+    // Insert file_entries with destination_path
+    for (i, actual_name) in actual_names.iter().enumerate() {
+        let dest = &selected_files[i].destination_path;
+        queries::insert_file_entry_with_destination(
+            &pool,
+            mod_record.id,
+            actual_name,
+            None,
+            Some(dest),
+        )
+        .await?;
+    }
+
+    let _ = app;
+
+    Ok(ImportResult {
+        mod_record,
+        file_count: actual_names.len(),
+        sub_mods: Vec::new(),
+        has_recognized_files: false,
+    })
+}
+
+/// Add files to an existing loose-file mod.
+#[tauri::command]
+#[specta::specta]
+pub async fn add_files_to_mod(
+    app: AppHandle,
+    pool: tauri::State<'_, SqlitePool>,
+    mod_id: i64,
+    files: Vec<LooseFileInput>,
+) -> Result<usize, AppError> {
+    let mod_record = queries::get_mod(&pool, mod_id).await?;
+
+    // Verify this is a loose mod
+    if mod_record.mod_type != "loose" {
+        return Err(AppError::IoError(
+            "Cannot add individual files to a structured mod".to_string(),
+        ));
+    }
+
+    let mod_staging = PathBuf::from(&mod_record.staged_path);
+
+    // Build source pairs
+    let source_pairs: Vec<(String, String)> = files
+        .iter()
+        .map(|f| (f.source_path.clone(), f.file_name.clone()))
+        .collect();
+
+    let staging_clone = mod_staging.clone();
+    let actual_names = tokio::task::spawn_blocking(move || {
+        import::copy_files_to_staging(&source_pairs, &staging_clone)
+    })
+    .await
+    .map_err(|e| AppError::IoError(format!("Spawn blocking failed: {}", e)))??;
+
+    // Insert new file entries
+    for (i, actual_name) in actual_names.iter().enumerate() {
+        let dest = &files[i].destination_path;
+        queries::insert_file_entry_with_destination(
+            &pool,
+            mod_record.id,
+            actual_name,
+            None,
+            Some(dest),
+        )
+        .await?;
+    }
+
+    let _ = app;
+
+    Ok(actual_names.len())
+}
+
+/// Remove a single file from a loose-file mod (deletes from staging/game dir and DB).
+#[tauri::command]
+#[specta::specta]
+pub async fn remove_file_from_mod(
+    pool: tauri::State<'_, SqlitePool>,
+    file_entry_id: i64,
+) -> Result<(), AppError> {
+    // Get the file entry
+    let pool_ref: &SqlitePool = &pool;
+    let entry: FileEntry = sqlx::query_as::<_, FileEntry>(
+        "SELECT id, mod_id, relative_path, sub_mod_id, destination_path FROM file_entries WHERE id=$1",
+    )
+    .bind(file_entry_id)
+    .fetch_optional(pool_ref)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?
+    .ok_or_else(|| AppError::ModNotFound(format!("File entry ID {} not found", file_entry_id)))?;
+
+    // Get the mod record to find staging path and check if enabled
+    let mod_record = queries::get_mod(&pool, entry.mod_id).await?;
+
+    if mod_record.enabled {
+        // File is in the game directory — compute game-side path
+        let game = queries::get_game(&pool, mod_record.game_id).await?;
+        let dest_dir = entry.destination_path.as_deref().unwrap_or("/");
+        let game_path = if dest_dir == "/" {
+            PathBuf::from(&game.mod_dir).join(&entry.relative_path)
+        } else {
+            PathBuf::from(&game.mod_dir).join(dest_dir).join(&entry.relative_path)
+        };
+        if game_path.exists() {
+            std::fs::remove_file(&game_path)?;
+        }
+    } else {
+        // File is in staging
+        let staging_path = PathBuf::from(&mod_record.staged_path).join(&entry.relative_path);
+        if staging_path.exists() {
+            std::fs::remove_file(&staging_path)?;
+        }
+    }
+
+    // Delete DB record
+    queries::delete_file_entry(&pool, file_entry_id).await?;
+
+    Ok(())
+}
+
 /// Convert a mod name to a filesystem-safe slug for staging subdir path.
-fn slug_from_name(name: &str) -> String {
+pub(crate) fn slug_from_name(name: &str) -> String {
     name.chars()
         .map(|c| {
             if c.is_alphanumeric() || c == '-' {
