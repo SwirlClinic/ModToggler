@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-03-05T16:11:30.012Z"
-last_activity: 2026-03-05 — Completed 02-02-PLAN.md (Toggle service + DB queries)
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-03-05T16:15:23.000Z"
+last_activity: 2026-03-05 — Completed 02-03-PLAN.md (IPC Commands + React Hooks)
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 10
-  completed_plans: 7
-  percent: 60
+  completed_plans: 8
+  percent: 70
 ---
 
 # Project State
@@ -26,28 +26,28 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 2 of 4 (Core Mod Loop)
-Plan: 2 of 5 in current phase (COMPLETE)
+Plan: 3 of 5 in current phase (COMPLETE)
 Status: Executing Phase 2
-Last activity: 2026-03-05 — Completed 02-02-PLAN.md (Toggle service + DB queries)
+Last activity: 2026-03-05 — Completed 02-03-PLAN.md (IPC Commands + React Hooks)
 
-Progress: [██████░░░░] 60%
+Progress: [████████░░] 70%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 8min
-- Total execution time: 0.78 hours
+- Total plans completed: 8
+- Average duration: 7min
+- Total execution time: 0.93 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1-Foundation | 5/5 | 44min | 9min |
-| 2-Core-Mod-Loop | 1/5 | 3min | 3min |
+| 2-Core-Mod-Loop | 2/5 | 9min | 5min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (3min), 01-03 (9min), 01-04 (3min), 01-05 (8min), 02-01 (3min)
+- Last 5 plans: 01-04 (3min), 01-05 (8min), 02-01 (3min), 02-02 (6min), 02-03 (3min)
 - Trend: consistent
 
 *Updated after each plan completion*
@@ -56,6 +56,7 @@ Progress: [██████░░░░] 60%
 | Phase 01 P05 | 8min | 2 tasks | 5 files |
 | Phase 02 P01 | 3min | 2 tasks | 4 files |
 | Phase 02 P02 | 6min | 2 tasks | 3 files |
+| Phase 02 P03 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ Recent decisions affecting current work:
 - 02-01: Synchronous extraction API -- zip crate is sync, Tauri commands use spawn_blocking
 - [Phase 02]: Added get_game query as critical dependency for toggle service
 - [Phase 02]: Sub-mod files moved before parent on disable, after parent on enable for ordering safety
+- 02-03: import_mod creates mod-specific staging subdir using slug from mod name
+- 02-03: Sub-mod file entries stored with full Option_*/relative_path to match disk layout
 
 ### Pending Todos
 
@@ -93,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T16:11:30.010Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-03-05T16:15:23.000Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None

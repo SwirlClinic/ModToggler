@@ -35,7 +35,7 @@
 
 - [x] **CONFLICT-01**: App detects when two enabled mods share overlapping files (same file stem)
 - [x] **CONFLICT-02**: App displays which specific mods conflict and over which files
-- [ ] **CONFLICT-03**: Conflict warnings appear when enabling a mod that conflicts with an already-enabled mod
+- [x] **CONFLICT-03**: Conflict warnings appear when enabling a mod that conflicts with an already-enabled mod
 
 ### Profiles
 
@@ -104,7 +104,7 @@
 | TOGGLE-07 | Phase 2 | Complete |
 | CONFLICT-01 | Phase 2 | Complete |
 | CONFLICT-02 | Phase 2 | Complete |
-| CONFLICT-03 | Phase 2 | Pending |
+| CONFLICT-03 | Phase 2 | Complete |
 | PROFILE-01 | Phase 3 | Pending |
 | PROFILE-02 | Phase 3 | Pending |
 | PROFILE-03 | Phase 3 | Pending |
