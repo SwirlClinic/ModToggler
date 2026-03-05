@@ -4,7 +4,7 @@ use sqlx::sqlite::SqliteRow;
 use sqlx::{FromRow, Row, SqlitePool};
 
 use crate::error::AppError;
-use crate::services::journal::{deserialize_files, IncompleteJournalEntry};
+use crate::services::journal::{deserialize_files, serialize_files, FilePair, IncompleteJournalEntry};
 
 // ─── Record Types (specta::Type required for tauri-specta bindings generation) ───
 
@@ -63,6 +63,7 @@ pub struct FileEntry {
     pub id: i64,
     pub mod_id: i64,
     pub relative_path: String,
+    pub sub_mod_id: Option<i64>,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for FileEntry {
@@ -70,6 +71,53 @@ impl<'r> FromRow<'r, SqliteRow> for FileEntry {
         Ok(FileEntry {
             id: row.try_get("id")?,
             mod_id: row.try_get("mod_id")?,
+            relative_path: row.try_get("relative_path")?,
+            sub_mod_id: row.try_get("sub_mod_id")?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Type, Clone)]
+pub struct SubModRecord {
+    pub id: i64,
+    pub mod_id: i64,
+    pub name: String,
+    pub folder_name: String,
+    pub enabled: bool,
+    pub user_enabled: bool,
+}
+
+impl<'r> FromRow<'r, SqliteRow> for SubModRecord {
+    fn from_row(row: &'r SqliteRow) -> Result<Self, sqlx::Error> {
+        Ok(SubModRecord {
+            id: row.try_get("id")?,
+            mod_id: row.try_get("mod_id")?,
+            name: row.try_get("name")?,
+            folder_name: row.try_get("folder_name")?,
+            enabled: {
+                let val: i64 = row.try_get("enabled")?;
+                val != 0
+            },
+            user_enabled: {
+                let val: i64 = row.try_get("user_enabled")?;
+                val != 0
+            },
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Type, Clone)]
+pub struct ConflictInfo {
+    pub conflicting_mod_id: i64,
+    pub conflicting_mod_name: String,
+    pub relative_path: String,
+}
+
+impl<'r> FromRow<'r, SqliteRow> for ConflictInfo {
+    fn from_row(row: &'r SqliteRow) -> Result<Self, sqlx::Error> {
+        Ok(ConflictInfo {
+            conflicting_mod_id: row.try_get("conflicting_mod_id")?,
+            conflicting_mod_name: row.try_get("conflicting_mod_name")?,
             relative_path: row.try_get("relative_path")?,
         })
     }
@@ -178,7 +226,20 @@ pub async fn delete_game(pool: &SqlitePool, id: i64) -> Result<(), AppError> {
     Ok(())
 }
 
-// ─── Mod Queries (used by integrity scan) ───
+// ─── Game Queries (get by ID) ───
+
+pub async fn get_game(pool: &SqlitePool, game_id: i64) -> Result<GameRecord, AppError> {
+    sqlx::query_as::<_, GameRecord>(
+        "SELECT id, name, mod_dir, staging_dir, mod_structure, requires_elevation FROM games WHERE id=$1",
+    )
+    .bind(game_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?
+    .ok_or_else(|| AppError::GameNotFound(format!("Game ID {} not found", game_id)))
+}
+
+// ─── Mod Queries ───
 
 pub async fn list_all_mods(pool: &SqlitePool) -> Result<Vec<ModRecord>, AppError> {
     let rows = sqlx::query_as::<_, ModRecord>(
@@ -191,9 +252,88 @@ pub async fn list_all_mods(pool: &SqlitePool) -> Result<Vec<ModRecord>, AppError
     Ok(rows)
 }
 
+pub async fn insert_mod(
+    pool: &SqlitePool,
+    game_id: i64,
+    name: &str,
+    staged_path: &str,
+) -> Result<ModRecord, AppError> {
+    let result = sqlx::query(
+        "INSERT INTO mods (game_id, name, staged_path) VALUES ($1, $2, $3)",
+    )
+    .bind(game_id)
+    .bind(name)
+    .bind(staged_path)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    let id = result.last_insert_rowid();
+
+    Ok(ModRecord {
+        id,
+        game_id,
+        name: name.to_string(),
+        enabled: false,
+        staged_path: staged_path.to_string(),
+    })
+}
+
+pub async fn get_mod(pool: &SqlitePool, mod_id: i64) -> Result<ModRecord, AppError> {
+    sqlx::query_as::<_, ModRecord>(
+        "SELECT id, game_id, name, enabled, staged_path FROM mods WHERE id=$1",
+    )
+    .bind(mod_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?
+    .ok_or_else(|| AppError::ModNotFound(format!("Mod ID {} not found", mod_id)))
+}
+
+pub async fn list_mods_for_game(
+    pool: &SqlitePool,
+    game_id: i64,
+) -> Result<Vec<ModRecord>, AppError> {
+    let rows = sqlx::query_as::<_, ModRecord>(
+        "SELECT id, game_id, name, enabled, staged_path FROM mods WHERE game_id=$1 ORDER BY enabled DESC, name ASC",
+    )
+    .bind(game_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    Ok(rows)
+}
+
+pub async fn update_mod_enabled(
+    pool: &SqlitePool,
+    mod_id: i64,
+    enabled: bool,
+) -> Result<(), AppError> {
+    let val: i64 = if enabled { 1 } else { 0 };
+    sqlx::query("UPDATE mods SET enabled=$1 WHERE id=$2")
+        .bind(val)
+        .bind(mod_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+    Ok(())
+}
+
+pub async fn delete_mod_db(pool: &SqlitePool, mod_id: i64) -> Result<(), AppError> {
+    sqlx::query("DELETE FROM mods WHERE id=$1")
+        .bind(mod_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+    Ok(())
+}
+
+// ─── File Entry Queries ───
+
 pub async fn list_file_entries(pool: &SqlitePool, mod_id: i64) -> Result<Vec<FileEntry>, AppError> {
     let rows = sqlx::query_as::<_, FileEntry>(
-        "SELECT id, mod_id, relative_path FROM file_entries WHERE mod_id=$1",
+        "SELECT id, mod_id, relative_path, sub_mod_id FROM file_entries WHERE mod_id=$1",
     )
     .bind(mod_id)
     .fetch_all(pool)
@@ -201,6 +341,224 @@ pub async fn list_file_entries(pool: &SqlitePool, mod_id: i64) -> Result<Vec<Fil
     .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
     Ok(rows)
+}
+
+pub async fn list_file_entries_for_sub_mod(
+    pool: &SqlitePool,
+    sub_mod_id: i64,
+) -> Result<Vec<FileEntry>, AppError> {
+    let rows = sqlx::query_as::<_, FileEntry>(
+        "SELECT id, mod_id, relative_path, sub_mod_id FROM file_entries WHERE sub_mod_id=$1",
+    )
+    .bind(sub_mod_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    Ok(rows)
+}
+
+pub async fn insert_file_entry(
+    pool: &SqlitePool,
+    mod_id: i64,
+    relative_path: &str,
+    sub_mod_id: Option<i64>,
+) -> Result<FileEntry, AppError> {
+    let result = sqlx::query(
+        "INSERT INTO file_entries (mod_id, relative_path, sub_mod_id) VALUES ($1, $2, $3)",
+    )
+    .bind(mod_id)
+    .bind(relative_path)
+    .bind(sub_mod_id)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    let id = result.last_insert_rowid();
+
+    Ok(FileEntry {
+        id,
+        mod_id,
+        relative_path: relative_path.to_string(),
+        sub_mod_id,
+    })
+}
+
+// ─── Sub-Mod Queries ───
+
+pub async fn insert_sub_mod(
+    pool: &SqlitePool,
+    mod_id: i64,
+    name: &str,
+    folder_name: &str,
+) -> Result<SubModRecord, AppError> {
+    let result = sqlx::query(
+        "INSERT INTO sub_mods (mod_id, name, folder_name) VALUES ($1, $2, $3)",
+    )
+    .bind(mod_id)
+    .bind(name)
+    .bind(folder_name)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    let id = result.last_insert_rowid();
+
+    Ok(SubModRecord {
+        id,
+        mod_id,
+        name: name.to_string(),
+        folder_name: folder_name.to_string(),
+        enabled: false,
+        user_enabled: false,
+    })
+}
+
+pub async fn get_sub_mod(pool: &SqlitePool, sub_mod_id: i64) -> Result<SubModRecord, AppError> {
+    sqlx::query_as::<_, SubModRecord>(
+        "SELECT id, mod_id, name, folder_name, enabled, user_enabled FROM sub_mods WHERE id=$1",
+    )
+    .bind(sub_mod_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?
+    .ok_or_else(|| AppError::ModNotFound(format!("Sub-mod ID {} not found", sub_mod_id)))
+}
+
+pub async fn list_sub_mods(
+    pool: &SqlitePool,
+    mod_id: i64,
+) -> Result<Vec<SubModRecord>, AppError> {
+    let rows = sqlx::query_as::<_, SubModRecord>(
+        "SELECT id, mod_id, name, folder_name, enabled, user_enabled FROM sub_mods WHERE mod_id=$1",
+    )
+    .bind(mod_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    Ok(rows)
+}
+
+pub async fn update_sub_mod_enabled(
+    pool: &SqlitePool,
+    sub_mod_id: i64,
+    enabled: bool,
+    user_enabled: bool,
+) -> Result<(), AppError> {
+    let en: i64 = if enabled { 1 } else { 0 };
+    let ue: i64 = if user_enabled { 1 } else { 0 };
+    sqlx::query("UPDATE sub_mods SET enabled=$1, user_enabled=$2 WHERE id=$3")
+        .bind(en)
+        .bind(ue)
+        .bind(sub_mod_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+    Ok(())
+}
+
+// ─── Conflict Detection ───
+
+pub async fn check_conflicts(
+    pool: &SqlitePool,
+    mod_id: i64,
+    game_id: i64,
+) -> Result<Vec<ConflictInfo>, AppError> {
+    let rows = sqlx::query_as::<_, ConflictInfo>(
+        "SELECT
+            fe_other.mod_id AS conflicting_mod_id,
+            m_other.name AS conflicting_mod_name,
+            fe_target.relative_path
+        FROM file_entries fe_target
+        JOIN file_entries fe_other
+            ON fe_target.relative_path = fe_other.relative_path
+            AND fe_target.mod_id != fe_other.mod_id
+        JOIN mods m_other ON fe_other.mod_id = m_other.id
+        WHERE fe_target.mod_id = $1
+            AND m_other.game_id = $2
+            AND m_other.enabled = 1
+            AND (fe_other.sub_mod_id IS NULL OR EXISTS (
+                SELECT 1 FROM sub_mods sm WHERE sm.id = fe_other.sub_mod_id AND sm.enabled = 1
+            ))
+        ORDER BY fe_target.relative_path",
+    )
+    .bind(mod_id)
+    .bind(game_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    Ok(rows)
+}
+
+// ─── Journal Queries (async DB functions) ───
+
+pub async fn begin_toggle(
+    pool: &SqlitePool,
+    mod_id: i64,
+    operation: &str,
+    files: &[FilePair],
+) -> Result<i64, AppError> {
+    let files_json = serialize_files(files)?;
+    let result = sqlx::query(
+        "INSERT INTO toggle_journal (mod_id, operation, status, files_json) VALUES ($1, $2, 'in_progress', $3)",
+    )
+    .bind(mod_id)
+    .bind(operation)
+    .bind(&files_json)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    Ok(result.last_insert_rowid())
+}
+
+pub async fn mark_file_done(
+    pool: &SqlitePool,
+    journal_id: i64,
+    file_index: usize,
+) -> Result<(), AppError> {
+    // Read-modify-write the files_json blob
+    let row: (String,) = sqlx::query_as(
+        "SELECT files_json FROM toggle_journal WHERE id=$1",
+    )
+    .bind(journal_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    let mut files = deserialize_files(&row.0)?;
+    if file_index >= files.len() {
+        return Err(AppError::JournalCorrupt(format!(
+            "File index {} out of bounds (journal has {} files)",
+            file_index,
+            files.len()
+        )));
+    }
+    files[file_index].done = true;
+    let updated_json = serialize_files(&files)?;
+
+    sqlx::query("UPDATE toggle_journal SET files_json=$1 WHERE id=$2")
+        .bind(&updated_json)
+        .bind(journal_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    Ok(())
+}
+
+pub async fn complete_journal(pool: &SqlitePool, journal_id: i64) -> Result<(), AppError> {
+    sqlx::query(
+        "UPDATE toggle_journal SET status='done', completed_at=unixepoch() WHERE id=$1",
+    )
+    .bind(journal_id)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    Ok(())
 }
 
 // ─── Journal Queries ───
@@ -231,6 +589,37 @@ pub async fn scan_incomplete_journals(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::journal::FilePair;
+
+    /// Create an in-memory SQLite pool with all migrations applied.
+    async fn test_pool() -> SqlitePool {
+        let pool = SqlitePool::connect("sqlite::memory:")
+            .await
+            .expect("Failed to create in-memory pool");
+
+        // Enable foreign keys (SQLite requires this per-connection)
+        sqlx::query("PRAGMA foreign_keys = ON")
+            .execute(&pool)
+            .await
+            .expect("Failed to enable foreign keys");
+
+        // Run all migrations
+        for migration in crate::db::migrations::get_migrations() {
+            sqlx::raw_sql(migration.sql)
+                .execute(&pool)
+                .await
+                .expect(&format!("Failed migration: {}", migration.description));
+        }
+
+        pool
+    }
+
+    /// Helper: insert a game and return it.
+    async fn seed_game(pool: &SqlitePool) -> GameRecord {
+        insert_game(pool, "Tekken 8", "C:/game/Mods", "C:/staging", "structured", false)
+            .await
+            .unwrap()
+    }
 
     #[test]
     fn game_record_is_serializable() {
@@ -269,5 +658,280 @@ mod tests {
         };
         let json = serde_json::to_string(&result).unwrap();
         assert!(json.contains("missing_from_game"));
+    }
+
+    // ─── Mod CRUD Tests ───
+
+    #[tokio::test]
+    async fn test_insert_mod_creates_record() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Cool Mod", "C:/staging/cool-mod").await.unwrap();
+        assert_eq!(m.name, "Cool Mod");
+        assert_eq!(m.game_id, game.id);
+        assert!(!m.enabled, "New mod should be disabled by default");
+        assert_eq!(m.staged_path, "C:/staging/cool-mod");
+    }
+
+    #[tokio::test]
+    async fn test_get_mod_returns_record() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Test Mod", "C:/staging/test").await.unwrap();
+        let fetched = get_mod(&pool, m.id).await.unwrap();
+        assert_eq!(fetched.id, m.id);
+        assert_eq!(fetched.name, "Test Mod");
+    }
+
+    #[tokio::test]
+    async fn test_get_mod_missing_returns_error() {
+        let pool = test_pool().await;
+        let result = get_mod(&pool, 999).await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            AppError::ModNotFound(_) => {}
+            other => panic!("Expected ModNotFound, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_list_mods_for_game_ordered() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let _m1 = insert_mod(&pool, game.id, "Zebra Mod", "C:/staging/z").await.unwrap();
+        let m2 = insert_mod(&pool, game.id, "Alpha Mod", "C:/staging/a").await.unwrap();
+        let _m3 = insert_mod(&pool, game.id, "Beta Mod", "C:/staging/b").await.unwrap();
+        // Enable Alpha Mod -- it should appear first
+        update_mod_enabled(&pool, m2.id, true).await.unwrap();
+
+        let mods = list_mods_for_game(&pool, game.id).await.unwrap();
+        assert_eq!(mods.len(), 3);
+        assert_eq!(mods[0].name, "Alpha Mod", "Enabled mod first");
+        assert_eq!(mods[1].name, "Beta Mod", "Then alphabetical");
+        assert_eq!(mods[2].name, "Zebra Mod");
+    }
+
+    #[tokio::test]
+    async fn test_list_mods_for_game_filters_by_game() {
+        let pool = test_pool().await;
+        let game1 = seed_game(&pool).await;
+        let game2 = insert_game(&pool, "Other Game", "D:/other", "D:/staging", "loose", false).await.unwrap();
+        insert_mod(&pool, game1.id, "Game1 Mod", "C:/staging/g1").await.unwrap();
+        insert_mod(&pool, game2.id, "Game2 Mod", "D:/staging/g2").await.unwrap();
+
+        let mods = list_mods_for_game(&pool, game1.id).await.unwrap();
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].name, "Game1 Mod");
+    }
+
+    #[tokio::test]
+    async fn test_update_mod_enabled() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        assert!(!m.enabled);
+
+        update_mod_enabled(&pool, m.id, true).await.unwrap();
+        let fetched = get_mod(&pool, m.id).await.unwrap();
+        assert!(fetched.enabled);
+
+        update_mod_enabled(&pool, m.id, false).await.unwrap();
+        let fetched = get_mod(&pool, m.id).await.unwrap();
+        assert!(!fetched.enabled);
+    }
+
+    #[tokio::test]
+    async fn test_delete_mod_cascade() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let sm = insert_sub_mod(&pool, m.id, "Option A", "Option_A").await.unwrap();
+        insert_file_entry(&pool, m.id, "main.pak", None).await.unwrap();
+        insert_file_entry(&pool, m.id, "option.pak", Some(sm.id)).await.unwrap();
+
+        delete_mod_db(&pool, m.id).await.unwrap();
+
+        // Mod gone
+        assert!(get_mod(&pool, m.id).await.is_err());
+        // File entries gone
+        let files = list_file_entries(&pool, m.id).await.unwrap();
+        assert!(files.is_empty());
+        // Sub-mods gone
+        let subs = list_sub_mods(&pool, m.id).await.unwrap();
+        assert!(subs.is_empty());
+    }
+
+    // ─── Sub-Mod Tests ───
+
+    #[tokio::test]
+    async fn test_insert_sub_mod_defaults() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let sm = insert_sub_mod(&pool, m.id, "Option A", "Option_A").await.unwrap();
+        assert_eq!(sm.mod_id, m.id);
+        assert_eq!(sm.name, "Option A");
+        assert_eq!(sm.folder_name, "Option_A");
+        assert!(!sm.enabled, "Sub-mod enabled should default to false");
+        assert!(!sm.user_enabled, "Sub-mod user_enabled should default to false");
+    }
+
+    #[tokio::test]
+    async fn test_list_sub_mods() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        insert_sub_mod(&pool, m.id, "Option A", "Option_A").await.unwrap();
+        insert_sub_mod(&pool, m.id, "Option B", "Option_B").await.unwrap();
+
+        let subs = list_sub_mods(&pool, m.id).await.unwrap();
+        assert_eq!(subs.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_update_sub_mod_enabled() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let sm = insert_sub_mod(&pool, m.id, "Option A", "Option_A").await.unwrap();
+
+        update_sub_mod_enabled(&pool, sm.id, true, true).await.unwrap();
+        let fetched = get_sub_mod(&pool, sm.id).await.unwrap();
+        assert!(fetched.enabled);
+        assert!(fetched.user_enabled);
+
+        // Disable effective state but keep user_enabled
+        update_sub_mod_enabled(&pool, sm.id, false, true).await.unwrap();
+        let fetched = get_sub_mod(&pool, sm.id).await.unwrap();
+        assert!(!fetched.enabled);
+        assert!(fetched.user_enabled, "user_enabled should be preserved");
+    }
+
+    // ─── File Entry Tests ───
+
+    #[tokio::test]
+    async fn test_insert_file_entry_without_sub_mod() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let fe = insert_file_entry(&pool, m.id, "textures/skin.pak", None).await.unwrap();
+        assert_eq!(fe.mod_id, m.id);
+        assert_eq!(fe.relative_path, "textures/skin.pak");
+        assert!(fe.sub_mod_id.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_insert_file_entry_with_sub_mod() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let sm = insert_sub_mod(&pool, m.id, "Option A", "Option_A").await.unwrap();
+        let fe = insert_file_entry(&pool, m.id, "Option_A/extra.pak", Some(sm.id)).await.unwrap();
+        assert_eq!(fe.sub_mod_id, Some(sm.id));
+    }
+
+    #[tokio::test]
+    async fn test_list_file_entries_for_sub_mod() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let sm = insert_sub_mod(&pool, m.id, "Option A", "Option_A").await.unwrap();
+        insert_file_entry(&pool, m.id, "main.pak", None).await.unwrap();
+        insert_file_entry(&pool, m.id, "Option_A/opt.pak", Some(sm.id)).await.unwrap();
+
+        let sub_files = list_file_entries_for_sub_mod(&pool, sm.id).await.unwrap();
+        assert_eq!(sub_files.len(), 1);
+        assert_eq!(sub_files[0].relative_path, "Option_A/opt.pak");
+    }
+
+    // ─── Conflict Detection Tests ───
+
+    #[tokio::test]
+    async fn test_check_conflicts_finds_overlapping_paths() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m1 = insert_mod(&pool, game.id, "Mod A", "C:/staging/a").await.unwrap();
+        let m2 = insert_mod(&pool, game.id, "Mod B", "C:/staging/b").await.unwrap();
+        // Both mods have the same relative path
+        insert_file_entry(&pool, m1.id, "shared.pak", None).await.unwrap();
+        insert_file_entry(&pool, m2.id, "shared.pak", None).await.unwrap();
+        insert_file_entry(&pool, m1.id, "unique_a.pak", None).await.unwrap();
+
+        // Enable Mod B so it shows up as a conflict when checking Mod A
+        update_mod_enabled(&pool, m2.id, true).await.unwrap();
+
+        let conflicts = check_conflicts(&pool, m1.id, game.id).await.unwrap();
+        assert_eq!(conflicts.len(), 1);
+        assert_eq!(conflicts[0].conflicting_mod_name, "Mod B");
+        assert_eq!(conflicts[0].relative_path, "shared.pak");
+    }
+
+    #[tokio::test]
+    async fn test_check_conflicts_no_conflict_when_other_disabled() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m1 = insert_mod(&pool, game.id, "Mod A", "C:/staging/a").await.unwrap();
+        let m2 = insert_mod(&pool, game.id, "Mod B", "C:/staging/b").await.unwrap();
+        insert_file_entry(&pool, m1.id, "shared.pak", None).await.unwrap();
+        insert_file_entry(&pool, m2.id, "shared.pak", None).await.unwrap();
+        // Mod B disabled -- no conflict
+        let conflicts = check_conflicts(&pool, m1.id, game.id).await.unwrap();
+        assert!(conflicts.is_empty());
+    }
+
+    // ─── Journal Tests ───
+
+    #[tokio::test]
+    async fn test_begin_toggle_creates_journal() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let pairs = vec![
+            FilePair { src: "C:/staging/m/a.pak".into(), dst: "C:/game/Mods/a.pak".into(), done: false },
+        ];
+        let journal_id = begin_toggle(&pool, m.id, "enable", &pairs).await.unwrap();
+        assert!(journal_id > 0);
+
+        // Verify it shows up as incomplete
+        let incomplete = scan_incomplete_journals(&pool).await.unwrap();
+        assert_eq!(incomplete.len(), 1);
+        assert_eq!(incomplete[0].id, journal_id);
+        assert_eq!(incomplete[0].operation, "enable");
+    }
+
+    #[tokio::test]
+    async fn test_mark_file_done_updates_json() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let pairs = vec![
+            FilePair { src: "a".into(), dst: "b".into(), done: false },
+            FilePair { src: "c".into(), dst: "d".into(), done: false },
+        ];
+        let jid = begin_toggle(&pool, m.id, "enable", &pairs).await.unwrap();
+
+        mark_file_done(&pool, jid, 0).await.unwrap();
+
+        // Verify via scan
+        let incomplete = scan_incomplete_journals(&pool).await.unwrap();
+        assert_eq!(incomplete[0].files[0].done, true);
+        assert_eq!(incomplete[0].files[1].done, false);
+    }
+
+    #[tokio::test]
+    async fn test_complete_journal_sets_done() {
+        let pool = test_pool().await;
+        let game = seed_game(&pool).await;
+        let m = insert_mod(&pool, game.id, "Mod", "C:/staging/m").await.unwrap();
+        let pairs = vec![
+            FilePair { src: "a".into(), dst: "b".into(), done: false },
+        ];
+        let jid = begin_toggle(&pool, m.id, "enable", &pairs).await.unwrap();
+
+        complete_journal(&pool, jid).await.unwrap();
+
+        // Should no longer be incomplete
+        let incomplete = scan_incomplete_journals(&pool).await.unwrap();
+        assert!(incomplete.is_empty(), "Completed journal should not appear in scan");
     }
 }
