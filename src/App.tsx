@@ -3,7 +3,7 @@ import { Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import GameSelector from './components/GameSelector'
 import SettingsPanel from './components/SettingsPanel'
-import EmptyModView from './components/EmptyModView'
+import ModList from './components/ModList'
 import IntegrityAlert from './components/IntegrityAlert'
 import { useGameStore } from './store/gameStore'
 import { useGames } from './hooks/useGames'
@@ -39,7 +39,7 @@ export default function App() {
             Select a game to get started
           </div>
         ) : (
-          <EmptyModView />
+          <ModList />
         )}
       </main>
 
