@@ -1,1 +1,2 @@
-// Stub services module -- filled in Plan 02
+pub mod file_ops;
+pub mod journal;
