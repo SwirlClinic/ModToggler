@@ -1,1 +1,2 @@
-// Stub commands module -- filled in Plan 03
+pub mod games;
+pub mod integrity;
