@@ -55,6 +55,73 @@ async runIntegrityScan() : Promise<Result<IntegrityScanResult, AppError>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Import a mod from a zip archive: extract to staging, create DB records, return result.
+ */
+async importMod(gameId: number, zipPath: string, modName: string) : Promise<Result<ImportResult, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("import_mod", { gameId, zipPath, modName }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listMods(gameId: number) : Promise<Result<ModRecord[], AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_mods", { gameId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listModFiles(modId: number) : Promise<Result<FileEntry[], AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_mod_files", { modId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listSubModsCmd(modId: number) : Promise<Result<SubModRecord[], AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_sub_mods_cmd", { modId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async toggleModCmd(modId: number, enable: boolean) : Promise<Result<null, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("toggle_mod_cmd", { modId, enable }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async toggleSubModCmd(subModId: number, enable: boolean) : Promise<Result<null, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("toggle_sub_mod_cmd", { subModId, enable }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteModCmd(modId: number) : Promise<Result<null, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_mod_cmd", { modId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async checkConflictsCmd(modId: number, gameId: number) : Promise<Result<ConflictInfo[], AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("check_conflicts_cmd", { modId, gameId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -120,6 +187,8 @@ export type AppError =
  * Catch-all
  */
 { kind: "Unknown"; message: string }
+export type ConflictInfo = { conflicting_mod_id: number; conflicting_mod_name: string; relative_path: string }
+export type FileEntry = { id: number; mod_id: number; relative_path: string; sub_mod_id: number | null }
 /**
  * A single file move pair tracked in the journal.
  * `done` is updated to true after each individual file is successfully moved.
@@ -127,11 +196,16 @@ export type AppError =
 export type FilePair = { src: string; dst: string; done: boolean }
 export type GameRecord = { id: number; name: string; mod_dir: string; staging_dir: string; mod_structure: string; requires_elevation: boolean }
 /**
+ * Result of importing a mod from a zip archive.
+ */
+export type ImportResult = { mod_record: ModRecord; file_count: number; sub_mods: SubModRecord[]; has_recognized_files: boolean }
+/**
  * A journal entry returned by scan_incomplete().
  */
 export type IncompleteJournalEntry = { id: number; mod_id: number; operation: string; files: FilePair[] }
 export type IntegrityScanResult = { missing_from_game: ModRecord[]; missing_from_staging: ModRecord[]; incomplete_journals: IncompleteJournalEntry[] }
 export type ModRecord = { id: number; game_id: number; name: string; enabled: boolean; staged_path: string }
+export type SubModRecord = { id: number; mod_id: number; name: string; folder_name: string; enabled: boolean; user_enabled: boolean }
 
 /** tauri-specta globals **/
 

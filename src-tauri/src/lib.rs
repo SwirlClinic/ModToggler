@@ -15,6 +15,14 @@ pub fn run() {
         commands::games::edit_game,
         commands::games::list_games,
         commands::integrity::run_integrity_scan,
+        commands::mods::import_mod,
+        commands::mods::list_mods,
+        commands::mods::list_mod_files,
+        commands::mods::list_sub_mods_cmd,
+        commands::mods::toggle_mod_cmd,
+        commands::mods::toggle_sub_mod_cmd,
+        commands::mods::delete_mod_cmd,
+        commands::mods::check_conflicts_cmd,
     ]);
 
     #[cfg(debug_assertions)]
