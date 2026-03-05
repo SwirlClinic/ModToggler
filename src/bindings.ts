@@ -122,6 +122,38 @@ async checkConflictsCmd(modId: number, gameId: number) : Promise<Result<Conflict
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async saveProfileCmd(gameId: number, name: string) : Promise<Result<ProfileRecord, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("save_profile_cmd", { gameId, name }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listProfilesCmd(gameId: number) : Promise<Result<ProfileRecord[], AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_profiles_cmd", { gameId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteProfileCmd(profileId: number) : Promise<Result<null, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_profile_cmd", { profileId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async loadProfileCmd(profileId: number) : Promise<Result<ApplyProfileResult, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("load_profile_cmd", { profileId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -187,6 +219,10 @@ export type AppError =
  * Catch-all
  */
 { kind: "Unknown"; message: string }
+/**
+ * Result of applying a profile, including any mods that were skipped (deleted since save).
+ */
+export type ApplyProfileResult = { skipped_mods: string[] }
 export type ConflictInfo = { conflicting_mod_id: number; conflicting_mod_name: string; relative_path: string }
 export type FileEntry = { id: number; mod_id: number; relative_path: string; sub_mod_id: number | null }
 /**
@@ -205,6 +241,7 @@ export type ImportResult = { mod_record: ModRecord; file_count: number; sub_mods
 export type IncompleteJournalEntry = { id: number; mod_id: number; operation: string; files: FilePair[] }
 export type IntegrityScanResult = { missing_from_game: ModRecord[]; missing_from_staging: ModRecord[]; incomplete_journals: IncompleteJournalEntry[] }
 export type ModRecord = { id: number; game_id: number; name: string; enabled: boolean; staged_path: string }
+export type ProfileRecord = { id: number; game_id: number; name: string; created_at: number; updated_at: number }
 export type SubModRecord = { id: number; mod_id: number; name: string; folder_name: string; enabled: boolean; user_enabled: boolean }
 
 /** tauri-specta globals **/

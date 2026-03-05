@@ -23,6 +23,10 @@ pub fn run() {
         commands::mods::toggle_sub_mod_cmd,
         commands::mods::delete_mod_cmd,
         commands::mods::check_conflicts_cmd,
+        commands::profiles::save_profile_cmd,
+        commands::profiles::list_profiles_cmd,
+        commands::profiles::delete_profile_cmd,
+        commands::profiles::load_profile_cmd,
     ]);
 
     #[cfg(debug_assertions)]
