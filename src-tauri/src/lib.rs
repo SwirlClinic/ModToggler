@@ -63,6 +63,12 @@ pub fn run() {
                     .await
                     .expect("Failed to connect to SQLite database");
 
+                // Enable foreign keys (SQLite requires this per-connection)
+                sqlx::query("PRAGMA foreign_keys = ON")
+                    .execute(&pool)
+                    .await
+                    .expect("Failed to enable foreign keys");
+
                 // Run migrations directly on the sqlx pool so Rust commands always have tables.
                 // This mirrors the DDL from db::migrations but runs on the pool Rust commands use.
                 // Using raw_sql to support multi-statement migrations (e.g., CREATE TABLE + CREATE INDEX).

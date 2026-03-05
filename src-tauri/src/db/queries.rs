@@ -321,6 +321,12 @@ pub async fn update_mod_enabled(
 }
 
 pub async fn delete_mod_db(pool: &SqlitePool, mod_id: i64) -> Result<(), AppError> {
+    // toggle_journal FK on mod_id has no CASCADE — delete journal entries first
+    sqlx::query("DELETE FROM toggle_journal WHERE mod_id=$1")
+        .bind(mod_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
     sqlx::query("DELETE FROM mods WHERE id=$1")
         .bind(mod_id)
         .execute(pool)
