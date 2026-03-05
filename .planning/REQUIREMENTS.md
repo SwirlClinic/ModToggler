@@ -7,10 +7,10 @@
 
 ### Game Management
 
-- [ ] **GAME-01**: User can add a game with a name and mod directory path
-- [ ] **GAME-02**: User can remove a game from the app
-- [ ] **GAME-03**: User can edit a game's name and mod directory path
-- [ ] **GAME-04**: User can select a game to view its mod list
+- [x] **GAME-01**: User can add a game with a name and mod directory path
+- [x] **GAME-02**: User can remove a game from the app
+- [x] **GAME-03**: User can edit a game's name and mod directory path
+- [x] **GAME-04**: User can select a game to view its mod list
 
 ### Mod Import
 
@@ -53,7 +53,7 @@
 
 ### Reliability
 
-- [ ] **RELIAB-01**: App performs integrity scan on startup to detect files moved outside the app (antivirus, manual moves)
+- [x] **RELIAB-01**: App performs integrity scan on startup to detect files moved outside the app (antivirus, manual moves)
 - [x] **RELIAB-02**: App handles cross-drive file moves gracefully (copy+delete with progress indication when rename fails)
 - [x] **RELIAB-03**: App provides clear error messages when file operations fail (permissions, missing files)
 
@@ -82,13 +82,13 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GAME-01 | Phase 1 | Pending |
-| GAME-02 | Phase 1 | Pending |
-| GAME-03 | Phase 1 | Pending |
-| GAME-04 | Phase 1 | Pending |
+| GAME-01 | Phase 1 | Complete |
+| GAME-02 | Phase 1 | Complete |
+| GAME-03 | Phase 1 | Complete |
+| GAME-04 | Phase 1 | Complete |
 | TOGGLE-04 | Phase 1 | Complete |
 | TOGGLE-06 | Phase 1 | Complete |
-| RELIAB-01 | Phase 1 | Pending |
+| RELIAB-01 | Phase 1 | Complete |
 | RELIAB-02 | Phase 1 | Complete |
 | RELIAB-03 | Phase 1 | Complete |
 | IMPORT-01 | Phase 2 | Pending |
