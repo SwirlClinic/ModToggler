@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-05T19:39:52.269Z"
-last_activity: 2026-03-05 — Completed 03-02-PLAN.md (Profile Frontend)
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-03-05T20:51:24.828Z"
+last_activity: 2026-03-05 — Completed 04-02-PLAN.md (Commands & Hooks)
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
+  completed_phases: 4
+  total_plans: 15
+  completed_plans: 15
   percent: 100
 ---
 
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Users can quickly toggle mods on and off without manually moving files, with confidence the app tracks what belongs to which mod.
-**Current focus:** Phase 3 complete — ready for Phase 4
+**Current focus:** All phases complete — v1.0 milestone reached
 
 ## Current Position
 
-Phase: 4 of 4 (Loose-File Games) — IN PROGRESS
-Plan: 2 of 3 in current phase (done)
-Status: Executing Phase 4
-Last activity: 2026-03-05 — Completed 04-02-PLAN.md (Commands & Hooks)
+Phase: 4 of 4 (Loose-File Games) — COMPLETE
+Plan: 3 of 3 in current phase (done)
+Status: All phases complete
+Last activity: 2026-03-05 — Completed 04-03-PLAN.md (Loose-File Frontend UI)
 
-Progress: [█████████░] 93%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: 6min
-- Total execution time: 1.13 hours
+- Total execution time: 1.27 hours
 
 **By Phase:**
 
@@ -63,6 +63,7 @@ Progress: [█████████░] 93%
 | Phase 03 P02 | 8min | 3 tasks | 7 files |
 | Phase 04 P01 | 5min | 2 tasks | 4 files |
 | Phase 04 P02 | 5min | 2 tasks | 4 files |
+| Phase 04 P03 | 8min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,9 @@ Recent decisions affecting current work:
 - 04-02: Manual bindings update for mod_type/destination_path since tauri-specta export runs at app startup
 - 04-02: import_loose_zip uses std::env::temp_dir (tempfile crate is dev-dependency only)
 - 04-02: remove_file_from_mod queries file_entry directly via sqlx (no dedicated query function)
+- [Phase 04]: Default destination path '/' (game root) for new file mappings in FileMapTable
+- [Phase 04]: Zip import pre-fills mod name from zip filename (strips .zip extension)
+- [Phase 04]: SubModOptions hidden for loose mods; add-files flow uses dialog with FileMapTable after file picker
 
 ### Pending Todos
 
@@ -119,6 +123,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T20:40:31Z
-Stopped at: Completed 04-02-PLAN.md
-Resume file: .planning/phases/04-loose-file-games/04-02-SUMMARY.md
+Last session: 2026-03-05T20:51:18.148Z
+Stopped at: Completed 04-03-PLAN.md
+Resume file: None

@@ -13,7 +13,7 @@ ModToggler ships in four phases. The foundation is built first: game configurati
 - [x] **Phase 1: Foundation** - Game configuration, staging setup, atomic file ops infrastructure, reliability primitives
 - [ ] **Phase 2: Core Mod Loop** - Import from zip, toggle on/off, conflict detection
 - [x] **Phase 3: Profiles** - Named per-game profiles, save/load mod configuration sets (completed 2026-03-05)
-- [ ] **Phase 4: Loose-File Games** - Mishmash game support with manual file tagging
+- [x] **Phase 4: Loose-File Games** - Mishmash game support with manual file tagging (completed 2026-03-05)
 
 ## Phase Details
 
@@ -95,4 +95,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation | 5/5 | Complete | 2026-03-05 |
 | 2. Core Mod Loop | 4/5 | In Progress|  |
 | 3. Profiles | 2/2 | Complete   | 2026-03-05 |
-| 4. Loose-File Games | 2/3 | In Progress|  |
+| 4. Loose-File Games | 3/3 | Complete   | 2026-03-05 |
