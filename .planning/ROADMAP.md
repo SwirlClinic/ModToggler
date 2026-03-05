@@ -10,7 +10,7 @@ ModToggler ships in four phases. The foundation is built first: game configurati
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Foundation** - Game configuration, staging setup, atomic file ops infrastructure, reliability primitives
+- [x] **Phase 1: Foundation** - Game configuration, staging setup, atomic file ops infrastructure, reliability primitives
 - [ ] **Phase 2: Core Mod Loop** - Import from zip, toggle on/off, conflict detection
 - [ ] **Phase 3: Profiles** - Named per-game profiles, save/load mod configuration sets
 - [ ] **Phase 4: Loose-File Games** - Mishmash game support with manual file tagging
@@ -30,11 +30,11 @@ ModToggler ships in four phases. The foundation is built first: game configurati
 **Plans**: 5 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Scaffold project, install dependencies, SQLite migrations, tauri-specta wiring, test infrastructure
-- [ ] 01-02-PLAN.md — AppError type hierarchy, file_ops service (atomic move + cross-drive fallback), journal service
-- [ ] 01-03-PLAN.md — Game management Tauri commands (add/remove/edit/list) + integrity scan command
-- [ ] 01-04-PLAN.md — React app shell, game selector, game CRUD forms, empty mod view, useGames hooks
-- [ ] 01-05-PLAN.md — IntegrityAlert component, useIntegrityScan hook, visual end-to-end checkpoint
+- [x] 01-01-PLAN.md — Scaffold project, install dependencies, SQLite migrations, tauri-specta wiring, test infrastructure
+- [x] 01-02-PLAN.md — AppError type hierarchy, file_ops service (atomic move + cross-drive fallback), journal service
+- [x] 01-03-PLAN.md — Game management Tauri commands (add/remove/edit/list) + integrity scan command
+- [x] 01-04-PLAN.md — React app shell, game selector, game CRUD forms, empty mod view, useGames hooks
+- [x] 01-05-PLAN.md — IntegrityAlert component, useIntegrityScan hook, visual end-to-end checkpoint
 
 ### Phase 2: Core Mod Loop
 **Goal**: Users can import mods and toggle them on/off with conflict warnings
@@ -46,7 +46,14 @@ Plans:
   3. PAK/ucas/utoc file triples are auto-grouped into a single logical mod at import
   4. Sub-mod option folders are detected at import and can be toggled independently
   5. Enabling a mod that conflicts with an already-enabled mod shows a conflict warning naming both mods and the overlapping files
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Zip crate dependency, DB migrations for sub-mods, import service (extraction + sub-mod detection)
+- [ ] 02-02-PLAN.md — Toggle service (enable/disable/delete), extended DB queries, conflict detection queries
+- [ ] 02-03-PLAN.md — Tauri commands for all mod operations, React Query hooks (useMods, useImportMod, etc.)
+- [ ] 02-04-PLAN.md — Frontend UI: ModList, ModCard, SubModOptions, ImportDialog, ConflictDialog, drag-and-drop
+- [ ] 02-05-PLAN.md — Full test suite validation and end-to-end human verification checkpoint
 
 ### Phase 3: Profiles
 **Goal**: Users can save and restore named mod configurations per game
@@ -76,7 +83,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 2/5 | In Progress|  |
-| 2. Core Mod Loop | 0/TBD | Not started | - |
+| 1. Foundation | 5/5 | Complete | 2026-03-05 |
+| 2. Core Mod Loop | 0/5 | Not started | - |
 | 3. Profiles | 0/TBD | Not started | - |
 | 4. Loose-File Games | 0/TBD | Not started | - |
