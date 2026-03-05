@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use crate::error::AppError;
 
 /// A single file move pair tracked in the journal.
 /// `done` is updated to true after each individual file is successfully moved.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Type, Clone, PartialEq)]
 pub struct FilePair {
     pub src: String,
     pub dst: String,
@@ -11,7 +12,7 @@ pub struct FilePair {
 }
 
 /// A journal entry returned by scan_incomplete().
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Type)]
 pub struct IncompleteJournalEntry {
     pub id: i64,
     pub mod_id: i64,
