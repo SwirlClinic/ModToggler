@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-05T17:15:50.349Z"
-last_activity: 2026-03-05 — Completed 02-04-PLAN.md (Mod Management UI Components)
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-05T17:39:03Z"
+last_activity: 2026-03-05 — Completed 03-01-PLAN.md (Profile Backend)
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 10
-  completed_plans: 10
-  percent: 80
+  total_plans: 12
+  completed_plans: 11
+  percent: 83
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Users can quickly toggle mods on and off without manually moving files, with confidence the app tracks what belongs to which mod.
-**Current focus:** Phase 2 — Core Mod Loop
+**Current focus:** Phase 3 — Profiles
 
 ## Current Position
 
-Phase: 2 of 4 (Core Mod Loop)
-Plan: 4 of 5 in current phase (COMPLETE)
-Status: Executing Phase 2
-Last activity: 2026-03-05 — Completed 02-04-PLAN.md (Mod Management UI Components)
+Phase: 3 of 4 (Profiles)
+Plan: 1 of 2 in current phase
+Status: Executing Phase 3
+Last activity: 2026-03-05 — Completed 03-01-PLAN.md (Profile Backend)
 
-Progress: [█████████░] 80%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 6min
-- Total execution time: 0.93 hours
+- Total execution time: 1.00 hours
 
 **By Phase:**
 
@@ -45,9 +45,10 @@ Progress: [█████████░] 80%
 |-------|-------|-------|----------|
 | 1-Foundation | 5/5 | 44min | 9min |
 | 2-Core-Mod-Loop | 3/5 | 12min | 4min |
+| 3-Profiles | 1/2 | 4min | 4min |
 
 **Recent Trend:**
-- Last 5 plans: 01-05 (8min), 02-01 (3min), 02-02 (6min), 02-03 (3min), 02-04 (3min)
+- Last 5 plans: 02-01 (3min), 02-02 (6min), 02-03 (3min), 02-04 (3min), 03-01 (4min)
 - Trend: consistent
 
 *Updated after each plan completion*
@@ -58,6 +59,7 @@ Progress: [█████████░] 80%
 | Phase 02 P02 | 6min | 2 tasks | 3 files |
 | Phase 02 P03 | 3min | 2 tasks | 5 files |
 | Phase 02 P04 | 3min | 3 tasks | 6 files |
+| Phase 03 P01 | 4min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -89,6 +91,10 @@ Recent decisions affecting current work:
 - 02-04: Merged ImportDialog/ConflictDialog into Task 1 (ModList compilation dependency)
 - 02-04: ConflictDialog readOnly mode for viewing conflicts on already-enabled mods
 - 02-04: Delete button uses two-click confirm pattern (not separate dialog)
+- 03-01: Profile entries store sub_mod_states as JSON array (avoids third join table)
+- 03-01: save_profile uses user_enabled for sub-mod capture (user intent, not effective state)
+- 03-01: apply_profile processes disables before enables to avoid spurious conflicts
+- 03-01: Mods not in profile (imported after save) are disabled during apply
 
 ### Pending Todos
 
@@ -100,6 +106,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T17:15:50.347Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-profiles/03-CONTEXT.md
+Last session: 2026-03-05T17:39:03Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: .planning/phases/03-profiles/03-01-SUMMARY.md

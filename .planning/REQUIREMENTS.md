@@ -39,10 +39,10 @@
 
 ### Profiles
 
-- [ ] **PROFILE-01**: User can save current mod configuration as a named profile
-- [ ] **PROFILE-02**: User can load a saved profile, which enables/disables mods to match the profile state
-- [ ] **PROFILE-03**: User can delete a saved profile
-- [ ] **PROFILE-04**: Profiles are per-game
+- [x] **PROFILE-01**: User can save current mod configuration as a named profile
+- [x] **PROFILE-02**: User can load a saved profile, which enables/disables mods to match the profile state
+- [x] **PROFILE-03**: User can delete a saved profile
+- [x] **PROFILE-04**: Profiles are per-game
 
 ### Loose-File Games
 
@@ -105,10 +105,10 @@
 | CONFLICT-01 | Phase 2 | Complete |
 | CONFLICT-02 | Phase 2 | Complete |
 | CONFLICT-03 | Phase 2 | Complete |
-| PROFILE-01 | Phase 3 | Pending |
-| PROFILE-02 | Phase 3 | Pending |
-| PROFILE-03 | Phase 3 | Pending |
-| PROFILE-04 | Phase 3 | Pending |
+| PROFILE-01 | Phase 3 | Complete |
+| PROFILE-02 | Phase 3 | Complete |
+| PROFILE-03 | Phase 3 | Complete |
+| PROFILE-04 | Phase 3 | Complete |
 | LOOSE-01 | Phase 4 | Pending |
 | LOOSE-02 | Phase 4 | Pending |
 | LOOSE-03 | Phase 4 | Pending |
