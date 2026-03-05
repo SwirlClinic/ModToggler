@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in-progress
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-03-05T16:07:38.000Z"
-last_activity: 2026-03-05 — Completed 02-01-PLAN.md (Import service foundation)
+status: executing
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-03-05T16:11:30.012Z"
+last_activity: 2026-03-05 — Completed 02-02-PLAN.md (Toggle service + DB queries)
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 7
   percent: 60
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 2 of 4 (Core Mod Loop)
-Plan: 1 of 5 in current phase (COMPLETE)
+Plan: 2 of 5 in current phase (COMPLETE)
 Status: Executing Phase 2
-Last activity: 2026-03-05 — Completed 02-01-PLAN.md (Import service foundation)
+Last activity: 2026-03-05 — Completed 02-02-PLAN.md (Toggle service + DB queries)
 
 Progress: [██████░░░░] 60%
 
@@ -55,6 +55,7 @@ Progress: [██████░░░░] 60%
 | Phase 01 P04 | 3min | 2 tasks | 16 files |
 | Phase 01 P05 | 8min | 2 tasks | 5 files |
 | Phase 02 P01 | 3min | 2 tasks | 4 files |
+| Phase 02 P02 | 6min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Set dark class on html element statically (dark-only app for v1)
 - 02-01: Used zip v8.x (actual latest) instead of v2.x stated in research doc
 - 02-01: Synchronous extraction API -- zip crate is sync, Tauri commands use spawn_blocking
+- [Phase 02]: Added get_game query as critical dependency for toggle service
+- [Phase 02]: Sub-mod files moved before parent on disable, after parent on enable for ordering safety
 
 ### Pending Todos
 
@@ -90,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-05T16:07:38.000Z
-Stopped at: Completed 02-01-PLAN.md
-Resume file: .planning/phases/02-core-mod-loop/02-02-PLAN.md
+Last session: 2026-03-05T16:11:30.010Z
+Stopped at: Completed 02-02-PLAN.md
+Resume file: None

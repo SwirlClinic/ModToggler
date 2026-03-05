@@ -23,18 +23,18 @@
 
 ### Mod Toggling
 
-- [ ] **TOGGLE-01**: User can toggle a mod on/off with one click
-- [ ] **TOGGLE-02**: Disabling a mod moves all its files from the game directory to the app-managed staging folder (~/.modtoggler/disabled/[game]/)
-- [ ] **TOGGLE-03**: Enabling a mod moves its files back from staging to the game directory
+- [x] **TOGGLE-01**: User can toggle a mod on/off with one click
+- [x] **TOGGLE-02**: Disabling a mod moves all its files from the game directory to the app-managed staging folder (~/.modtoggler/disabled/[game]/)
+- [x] **TOGGLE-03**: Enabling a mod moves its files back from staging to the game directory
 - [x] **TOGGLE-04**: Mod enabled/disabled state persists across app restarts
-- [ ] **TOGGLE-05**: User can toggle individual sub-mod options on/off independently of the parent mod
+- [x] **TOGGLE-05**: User can toggle individual sub-mod options on/off independently of the parent mod
 - [x] **TOGGLE-06**: App uses a transaction journal to ensure file moves are atomic — crash mid-toggle can be recovered
-- [ ] **TOGGLE-07**: User can permanently delete a mod and all its files (from staging or game directory)
+- [x] **TOGGLE-07**: User can permanently delete a mod and all its files (from staging or game directory)
 
 ### Conflict Detection
 
-- [ ] **CONFLICT-01**: App detects when two enabled mods share overlapping files (same file stem)
-- [ ] **CONFLICT-02**: App displays which specific mods conflict and over which files
+- [x] **CONFLICT-01**: App detects when two enabled mods share overlapping files (same file stem)
+- [x] **CONFLICT-02**: App displays which specific mods conflict and over which files
 - [ ] **CONFLICT-03**: Conflict warnings appear when enabling a mod that conflicts with an already-enabled mod
 
 ### Profiles
@@ -97,13 +97,13 @@
 | IMPORT-04 | Phase 2 | Complete |
 | IMPORT-05 | Phase 2 | Pending |
 | IMPORT-06 | Phase 2 | Complete |
-| TOGGLE-01 | Phase 2 | Pending |
-| TOGGLE-02 | Phase 2 | Pending |
-| TOGGLE-03 | Phase 2 | Pending |
-| TOGGLE-05 | Phase 2 | Pending |
-| TOGGLE-07 | Phase 2 | Pending |
-| CONFLICT-01 | Phase 2 | Pending |
-| CONFLICT-02 | Phase 2 | Pending |
+| TOGGLE-01 | Phase 2 | Complete |
+| TOGGLE-02 | Phase 2 | Complete |
+| TOGGLE-03 | Phase 2 | Complete |
+| TOGGLE-05 | Phase 2 | Complete |
+| TOGGLE-07 | Phase 2 | Complete |
+| CONFLICT-01 | Phase 2 | Complete |
+| CONFLICT-02 | Phase 2 | Complete |
 | CONFLICT-03 | Phase 2 | Pending |
 | PROFILE-01 | Phase 3 | Pending |
 | PROFILE-02 | Phase 3 | Pending |
