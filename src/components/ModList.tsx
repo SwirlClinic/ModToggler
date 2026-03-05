@@ -7,6 +7,7 @@ import EmptyModView from './EmptyModView'
 import ModCard from './ModCard'
 import ImportDialog from './ImportDialog'
 import ConflictDialog from './ConflictDialog'
+import ProfileDropdown from './ProfileDropdown'
 import { useMods, useToggleMod } from '../hooks/useMods'
 import { useGames } from '../hooks/useGames'
 import { useGameStore } from '../store/gameStore'
@@ -130,10 +131,13 @@ export default function ModList() {
         <div className="text-sm text-muted-foreground">
           {game?.name} &mdash; {mods.length} mod{mods.length !== 1 ? 's' : ''}
         </div>
-        <Button size="sm" onClick={handleImportClick}>
-          <Upload className="h-4 w-4" />
-          Import
-        </Button>
+        <div className="flex items-center gap-2">
+          {activeGameId && <ProfileDropdown gameId={activeGameId} />}
+          <Button size="sm" onClick={handleImportClick}>
+            <Upload className="h-4 w-4" />
+            Import
+          </Button>
+        </div>
       </div>
 
       {/* Mod cards or empty state */}
