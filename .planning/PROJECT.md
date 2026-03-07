@@ -27,6 +27,12 @@ Users can quickly toggle mods on and off without manually moving files, with con
 
 ### Active
 
+- [ ] Auto-update via Tauri updater plugin checking GitHub Releases
+- [ ] Update notification UI with prompt to install
+- [ ] GitHub Actions CI/CD pipeline for automated builds and releases
+
+### Future
+
 - [ ] Export/import profiles as JSON for sharing
 - [ ] User-editable notes on individual mods
 - [ ] Cross-platform support (macOS/Linux)
@@ -40,6 +46,15 @@ Users can quickly toggle mods on and off without manually moving files, with con
 - Load order management — PAK files don't merge; conflict detection is the right pattern
 - Mod merging — requires understanding internal file formats; deeply game-specific
 - Cloud sync — niche use case; JSON export covers sharing
+
+## Current Milestone: v1.1 Auto-Update Releases
+
+**Goal:** Enable the app to update itself via GitHub Releases with a notify+prompt UX, backed by CI/CD for automated builds.
+
+**Target features:**
+- Tauri v2 updater plugin integration with GitHub Releases endpoint
+- In-app update notification with user-initiated install
+- GitHub Actions workflow to build Windows installers and publish releases on tag push
 
 ## Context
 
@@ -71,4 +86,4 @@ Windows-first but Tauri enables cross-platform if needed later.
 | Profiles store sub_mod_states as JSON | Avoids third join table; simpler schema | ✓ Good |
 
 ---
-*Last updated: 2026-03-05 after v1.0 milestone*
+*Last updated: 2026-03-07 after v1.1 milestone started*
