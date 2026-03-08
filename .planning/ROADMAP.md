@@ -55,7 +55,10 @@
   2. Running `cargo tauri build` produces `.sig` signature files alongside the installer
   3. Updater plugin is registered in Rust and configured with the public key and GitHub Releases endpoint URL
   4. App builds and launches without errors with all new plugin dependencies and capabilities
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 05-01-PLAN.md -- Generate keypair, install dependencies, configure updater plugin and capabilities
+- [ ] 05-02-PLAN.md -- Run signed build, verify .sig output, user backs up key
 
 ### Phase 6: CI/CD Pipeline
 **Goal**: Pushing a version tag to GitHub automatically produces a signed release with installer and update manifest
@@ -88,6 +91,6 @@
 | 2. Core Mod Loop | v1.0 | 5/5 | Complete | 2026-03-05 |
 | 3. Profiles | v1.0 | 2/2 | Complete | 2026-03-05 |
 | 4. Loose-File Games | v1.0 | 3/3 | Complete | 2026-03-05 |
-| 5. Updater Foundation | v1.1 | 0/? | Not started | - |
+| 5. Updater Foundation | v1.1 | 0/2 | Planning complete | - |
 | 6. CI/CD Pipeline | v1.1 | 0/? | Not started | - |
 | 7. Update UI | v1.1 | 0/? | Not started | - |
