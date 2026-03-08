@@ -9,10 +9,10 @@ Requirements for auto-update releases milestone. Each maps to roadmap phases.
 
 ### Update Infrastructure
 
-- [ ] **INFRA-01**: App uses Ed25519 signing keypair for update artifact verification
-- [ ] **INFRA-02**: Tauri updater plugin is registered and configured with public key and GitHub Releases endpoint
-- [ ] **INFRA-03**: Updater capabilities/permissions are granted in the app's capability config
-- [ ] **INFRA-04**: `createUpdaterArtifacts` is enabled in bundle config to generate `.sig` files
+- [x] **INFRA-01**: App uses Ed25519 signing keypair for update artifact verification
+- [x] **INFRA-02**: Tauri updater plugin is registered and configured with public key and GitHub Releases endpoint
+- [x] **INFRA-03**: Updater capabilities/permissions are granted in the app's capability config
+- [x] **INFRA-04**: `createUpdaterArtifacts` is enabled in bundle config to generate `.sig` files
 
 ### Update UX
 
@@ -59,10 +59,10 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 5 | Pending |
-| INFRA-02 | Phase 5 | Pending |
-| INFRA-03 | Phase 5 | Pending |
-| INFRA-04 | Phase 5 | Pending |
+| INFRA-01 | Phase 5 | Complete |
+| INFRA-02 | Phase 5 | Complete |
+| INFRA-03 | Phase 5 | Complete |
+| INFRA-04 | Phase 5 | Complete |
 | UPD-01 | Phase 7 | Pending |
 | UPD-02 | Phase 7 | Pending |
 | UPD-03 | Phase 7 | Pending |
