@@ -1,361 +1,465 @@
 # Architecture Research
 
-**Domain:** Mod management desktop application (Tauri v2 + React + TypeScript)
-**Researched:** 2026-03-04
-**Confidence:** HIGH (Tauri official docs + Vortex open source reference + established patterns)
+**Domain:** Auto-update integration for Tauri v2 desktop app (ModToggler v1.1)
+**Researched:** 2026-03-08
+**Confidence:** HIGH (Tauri official docs, tauri-action repo, community guides verified)
 
-## Standard Architecture
+## System Overview: Update Integration
 
-### System Overview
+This documents how the auto-update system integrates with the existing ModToggler architecture. The update system spans three domains: build-time CI/CD, a static update manifest on GitHub Releases, and runtime update checking in the app.
 
 ```
 +---------------------------------------------------------------------+
-|                          React Frontend (Webview)                   |
+|                     GitHub (Build + Distribution)                    |
 |                                                                     |
-|  +-----------+  +-----------+  +-----------+  +-----------+        |
-|  |   Game    |  |   Mod     |  | Profile   |  | Settings  |        |
-|  |   View    |  |  List     |  |  Panel    |  |  Panel    |        |
-|  +-----------+  +-----------+  +-----------+  +-----------+        |
-|       |              |               |               |             |
-|  +-----------------------------------------------------------+     |
-|  |                 Zustand State Store                        |     |
-|  |  (games[], activeMods[], profiles[], pendingOps[])        |     |
-|  +-----------------------------------------------------------+     |
-|       |                                                      |     |
-|  +-----------------------------------------------------------+     |
-|  |          IPC Layer — invoke() / @tauri-apps/api           |     |
-+--+-----------------------------------------------------------+-----+
-                              | (JSON over ipc://)
+|  +-----------------+    +------------------+    +----------------+  |
+|  | GitHub Actions  |--->| GitHub Release   |--->| latest.json    |  |
+|  | (tauri-action)  |    | (tagged v1.1.0)  |    | (update        |  |
+|  |                 |    |                  |    |  manifest)     |  |
+|  | Builds + signs  |    | .msi / .exe      |    | version, sig,  |  |
+|  | on tag push     |    | .sig files       |    | download URLs  |  |
+|  +-----------------+    +------------------+    +----------------+  |
+|                                                        |            |
++--------------------------------------------------------|------------+
+                                                         | HTTPS GET
 +---------------------------------------------------------------------+
-|                          Rust Backend (Core)                        |
+|                    ModToggler App (Runtime)                          |
 |                                                                     |
-|  +-----------+  +-----------+  +-----------+  +-----------+        |
-|  |  Command  |  | File Ops  |  | Conflict  |  | Archive   |        |
-|  |  Handler  |  | Service   |  | Detector  |  | Extractor |        |
-|  +-----------+  +-----------+  +-----------+  +-----------+        |
-|       |              |               |               |             |
-|  +-----------------------------------------------------------+     |
-|  |                    App State (Arc<Mutex<T>>)               |     |
-|  |  (GameRegistry, ModRegistry, FileIndex, ActiveProfiles)   |     |
-|  +-----------------------------------------------------------+     |
-|       |                                                            |
-|  +-----------------------------------------------------------+     |
-|  |                  Persistence Layer                         |     |
-|  |   tauri-plugin-store (JSON)  |  SQLite (via sqlx)         |     |
-|  +-----------------------------------------------------------+     |
-|                              |                                     |
-+------------------------------+-------------------------------------+
-                               |
-+---------------------------------------------------------------------+
-|                         File System                                 |
-|                                                                     |
-|  ~/.modtoggler/                                                     |
-|  +-- config.json          (app config via tauri-plugin-store)      |
-|  +-- db.sqlite            (mod registry, file index)               |
-|  +-- disabled/            (staging area for disabled mods)         |
-|       +-- tekken8/        (per-game staging directories)           |
-|            +-- ModName/   (extracted mod files sit here)           |
-|                                                                     |
-|  C:\...\TEKKEN 8\...\Mods\   (live game mod directory)            |
+|  +--------------------------------------------------------------+  |
+|  |                   React Frontend (Webview)                    |  |
+|  |                                                               |  |
+|  |  +-----------+  +-----------+  +-------------------+          |  |
+|  |  |  Existing |  |  Existing |  |  NEW: UpdateBanner|          |  |
+|  |  |  ModList  |  |  Settings |  |  (toast/banner    |          |  |
+|  |  |  etc.     |  |  Panel    |  |   with progress)  |          |  |
+|  |  +-----------+  +-----------+  +-------------------+          |  |
+|  |       |              |               |                        |  |
+|  |  +-----------------------------------------------------------+|  |
+|  |  |          NEW: useUpdateCheck() hook                        ||  |
+|  |  |  calls @tauri-apps/plugin-updater check()                  ||  |
+|  |  |  manages download progress, triggers relaunch              ||  |
+|  |  +-----------------------------------------------------------+|  |
+|  +--------------------------------------------------------------+|  |
+|       |                                                          |  |
+|  +--------------------------------------------------------------+|  |
+|  |                   Rust Backend (Core)                         ||  |
+|  |                                                               ||  |
+|  |  +-----------+  +-----------+  +-------------------+          ||  |
+|  |  |  Existing |  |  Existing |  |  NEW: Updater     |          ||  |
+|  |  |  Commands |  |  Services |  |  Plugin           |          ||  |
+|  |  |           |  |           |  |  (tauri-plugin-   |          ||  |
+|  |  |           |  |           |  |   updater)        |          ||  |
+|  |  +-----------+  +-----------+  +-------------------+          ||  |
+|  |                                      |                        ||  |
+|  |                                +-------------------+          ||  |
+|  |                                |  NEW: Process     |          ||  |
+|  |                                |  Plugin           |          ||  |
+|  |                                |  (tauri-plugin-   |          ||  |
+|  |                                |   process)        |          ||  |
+|  |                                +-------------------+          ||  |
+|  +--------------------------------------------------------------+|  |
 +---------------------------------------------------------------------+
 ```
 
 ### Component Responsibilities
 
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
-| Game View | Display one game at a time, list its mods, handle selection | React page component, driven by Zustand |
-| Mod List | Render mods with toggle controls, conflict badges, option expanders | React list with per-item state from store |
-| Profile Panel | Save/load named configurations of which mods are enabled | React modal, invokes Rust profile commands |
-| Settings Panel | Configure game paths, add new games | React form, persisted via tauri-plugin-store |
-| Zustand Store | Client-side cache of app state; invalidated after Rust commands succeed | Zustand store (no persistence — Rust is source of truth) |
-| IPC Layer | Serializes invoke() calls and responses between webview and Rust | @tauri-apps/api/core — JSON over ipc:// protocol |
-| Command Handler | Thin Tauri #[command] functions that route to services | Rust functions in src-tauri/src/commands/ |
-| File Ops Service | All file moves between game dir and staging area; handles rename, mkdir | Rust in src-tauri/src/services/file_ops.rs |
-| Conflict Detector | Compares FileIndex entries across enabled mods to find path overlaps | Rust in src-tauri/src/services/conflict.rs |
-| Archive Extractor | Reads .zip, extracts to staging, records file manifest | Rust using zip crate |
-| App State | Shared Rust state (Arc<Mutex<T>>) injected into commands via Tauri State<T> | Structs in src-tauri/src/state.rs |
-| SQLite (db) | Persistent source of truth: games, mods, file manifests, profiles | sqlx with SQLite; managed at ~/.modtoggler/db.sqlite |
-| tauri-plugin-store | Lightweight JSON key-value store for app-level config (window state, preferences) | tauri-plugin-store; stored at ~/.modtoggler/config.json |
-| Staging Area | Disabled mods reside here; file names preserved, directory mirrors game layout | Plain filesystem at ~/.modtoggler/disabled/[game-slug]/ |
+**New components only** -- existing components are documented in the v1.0 architecture.
 
-## Recommended Project Structure
+| Component | Responsibility | Type |
+|-----------|----------------|------|
+| GitHub Actions workflow | Build, sign, and release Windows installer on tag push | NEW file: `.github/workflows/release.yml` |
+| tauri-plugin-updater | Rust plugin that checks endpoint, verifies signatures, downloads + installs updates | NEW dependency (Cargo + npm) |
+| tauri-plugin-process | Provides `relaunch()` to restart the app after update installs | NEW dependency (Cargo + npm) |
+| Signing keypair | Ed25519 key pair for update signature verification | NEW artifact: `~/.tauri/modtoggler.key` (local dev) + GitHub secret |
+| UpdateBanner / UpdateToast | Frontend UI showing update availability, download progress, install prompt | NEW React component |
+| useUpdateCheck hook | Encapsulates update check logic, progress tracking, error handling | NEW React hook |
+| latest.json | Static update manifest uploaded to GitHub Release by tauri-action | NEW build artifact (auto-generated) |
+| tauri.conf.json `plugins.updater` | Configuration: public key, GitHub endpoint URL | MODIFIED existing file |
+| capabilities/default.json | Add `updater:default` and `process:default` permissions | MODIFIED existing file |
+| Cargo.toml | Add `tauri-plugin-updater` and `tauri-plugin-process` deps | MODIFIED existing file |
+| package.json | Add `@tauri-apps/plugin-updater` and `@tauri-apps/plugin-process` deps | MODIFIED existing file |
+| lib.rs | Register updater and process plugins in Builder chain | MODIFIED existing file |
+
+## New vs Modified Files
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `.github/workflows/release.yml` | GitHub Actions workflow for building and publishing releases |
+| `src/hooks/useUpdateCheck.ts` | React hook for update lifecycle (check, download, install, relaunch) |
+| `src/components/UpdateBanner.tsx` | UI component for update notifications and download progress |
+
+### Modified Files
+
+| File | Change | Scope |
+|------|--------|-------|
+| `src-tauri/Cargo.toml` | Add `tauri-plugin-updater` and `tauri-plugin-process` dependencies | 2 lines in `[dependencies]` |
+| `package.json` | Add `@tauri-apps/plugin-updater` and `@tauri-apps/plugin-process` | 2 lines in `dependencies` |
+| `src-tauri/tauri.conf.json` | Add `bundle.createUpdaterArtifacts`, `plugins.updater` config block | ~15 lines added |
+| `src-tauri/capabilities/default.json` | Add `"updater:default"` and `"process:default"` to permissions array | 2 lines |
+| `src-tauri/src/lib.rs` | Register `.plugin(tauri_plugin_updater::Builder::new().build())` and `.plugin(tauri_plugin_process::init())` | 2 lines in Builder chain |
+| `src/App.tsx` | Mount `UpdateBanner` component (or integrate check into layout) | ~3 lines |
+
+## Recommended Project Structure (Additions Only)
 
 ```
 ModToggler/
-+-- src/                             # React frontend
++-- .github/
+|   +-- workflows/
+|       +-- release.yml             # NEW: Build + release on tag push
++-- src/
 |   +-- components/
-|   |   +-- GameSelector.tsx         # Dropdown to switch active game
-|   |   +-- ModList.tsx              # Scrollable list of mods for active game
-|   |   +-- ModItem.tsx              # Single mod row with toggle, options, conflicts
-|   |   +-- ModOptions.tsx           # Expandable sub-mod options (UE4 pak groups)
-|   |   +-- ProfilePanel.tsx         # Save/load profile modal
-|   |   +-- SettingsPanel.tsx        # Game path configuration
-|   |   +-- ConflictBadge.tsx        # Visual indicator for conflicting mods
+|   |   +-- UpdateBanner.tsx        # NEW: Update notification UI
 |   +-- hooks/
-|   |   +-- useModToggle.ts          # Wraps invoke("toggle_mod"), handles loading state
-|   |   +-- useImportMod.ts          # Handles file picker + invoke("import_mod")
-|   |   +-- useConflicts.ts          # Derives conflict data from store state
-|   +-- store/
-|   |   +-- gameStore.ts             # Zustand: games[], activeGameId
-|   |   +-- modStore.ts              # Zustand: mods[], enabled status, options
-|   |   +-- profileStore.ts          # Zustand: profiles[] for active game
-|   +-- lib/
-|   |   +-- tauri.ts                 # Typed wrappers around invoke() calls
-|   |   +-- types.ts                 # Shared TypeScript types matching Rust structs
-|   +-- App.tsx
-|   +-- main.tsx
-|
-+-- src-tauri/                       # Rust backend
-|   +-- src/
-|   |   +-- main.rs                  # App setup, plugin registration, command registration
-|   |   +-- state.rs                 # App state structs (GameRegistry, FileIndex etc.)
-|   |   +-- db/
-|   |   |   +-- mod.rs               # DB module root
-|   |   |   +-- schema.rs            # Table definitions (migrations inline or via sqlx-cli)
-|   |   |   +-- queries.rs           # Named query functions (insert_mod, list_mods, etc.)
-|   |   +-- commands/
-|   |   |   +-- mod.rs               # pub mod declarations
-|   |   |   +-- games.rs             # add_game, remove_game, list_games
-|   |   |   +-- mods.rs              # import_mod, toggle_mod, remove_mod, list_mods
-|   |   |   +-- profiles.rs          # save_profile, load_profile, list_profiles
-|   |   |   +-- conflicts.rs         # get_conflicts (read-only query)
-|   |   +-- services/
-|   |   |   +-- file_ops.rs          # move_to_staging(), move_to_game_dir(), atomic ops
-|   |   |   +-- archive.rs           # extract_zip(), build_file_manifest()
-|   |   |   +-- conflict.rs          # compute_conflicts() from FileIndex
-|   |   |   +-- mod_detector.rs      # auto-detect UE4 pak groupings from file stems
-|   |   +-- error.rs                 # AppError enum, impl Into<tauri::InvokeError>
-|   +-- Cargo.toml
-|   +-- tauri.conf.json
+|   |   +-- useUpdateCheck.ts       # NEW: Update check + install hook
++-- src-tauri/
+|   +-- Cargo.toml                  # MODIFIED: add updater + process plugins
+|   +-- tauri.conf.json             # MODIFIED: add updater config
 |   +-- capabilities/
-|       +-- default.json             # Tauri v2 permissions (fs, shell, store, sql)
+|       +-- default.json            # MODIFIED: add updater + process perms
 ```
 
 ### Structure Rationale
 
-- **commands/ vs services/:** Commands are thin Tauri entry points (#[command] macros). Services contain the actual logic. This keeps commands testable (services can be called from unit tests) and the IPC boundary explicit.
-- **db/ as its own module:** Database access is centralized. No ad-hoc SQL strings scattered through command handlers.
-- **store/ in frontend:** Zustand stores are a client-side cache only — they are populated by reading Rust state after each command succeeds. They are never the primary source of truth for anything that touches the filesystem.
-- **lib/tauri.ts:** All invoke() calls live here with full TypeScript typing, not spread across components. When a command signature changes in Rust, there is one place to update on the frontend.
+- **No new Rust commands or services needed.** The updater plugin handles everything internally -- check, download, verify signature, install. The frontend drives the flow via the JS plugin API. No custom Rust IPC commands are required.
+- **Single hook + single component pattern.** Matches the existing architecture where hooks wrap invoke/plugin calls and components consume hooks. `useUpdateCheck` is analogous to `useModToggle`.
+- **GitHub Actions in standard location.** `.github/workflows/` is the only place GitHub recognizes workflow files.
 
 ## Architectural Patterns
 
-### Pattern 1: Command-Service Separation
+### Pattern 1: Frontend-Driven Update Flow
 
-**What:** Tauri #[command] functions accept only raw inputs and State references. They call into service functions for logic, then return results. No file I/O or DB access inside command functions.
+**What:** The update check, download, and install are driven entirely from the React frontend using `@tauri-apps/plugin-updater`. No custom Rust commands are needed. The plugin's JS API talks directly to the Rust plugin internals.
 
-**When to use:** Always. Commands are thin adapters over services.
+**When to use:** Always for Tauri updater. The plugin is designed as a self-contained system.
 
-**Trade-offs:** Slight indirection overhead, but services can be unit-tested without a running Tauri instance.
-
-**Example:**
-```rust
-// commands/mods.rs
-#[tauri::command]
-pub async fn toggle_mod(
-    mod_id: i64,
-    enabled: bool,
-    state: tauri::State<'_, AppState>,
-) -> Result<ModStatus, AppError> {
-    let app_state = state.lock().await;
-    services::file_ops::toggle_mod(&app_state, mod_id, enabled).await
-}
-
-// services/file_ops.rs
-pub async fn toggle_mod(state: &AppState, mod_id: i64, enabled: bool) -> Result<ModStatus, AppError> {
-    // actual move logic lives here — testable independently
-}
-```
-
-### Pattern 2: Optimistic UI with Rollback
-
-**What:** The frontend marks the mod as toggling immediately (spinner state), then awaits the Rust command. On success, it refreshes state from Rust. On failure, it reverts and shows an error.
-
-**When to use:** Toggle operations which may take time (large file moves). Makes UI feel instant.
-
-**Trade-offs:** Adds complexity to the toggle hook. Required because file moves on Windows for large .pak files can take seconds.
+**Trade-offs:** Less control from Rust side, but avoids duplicating what the plugin already does well. If you need custom pre-update logic (e.g., saving unsaved state), do it in the hook before calling `downloadAndInstall()`.
 
 **Example:**
 ```typescript
-// hooks/useModToggle.ts
-export function useModToggle(modId: number) {
-  const { setModPending, refreshMods } = useModStore();
+// hooks/useUpdateCheck.ts
+import { check, Update } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
+import { useState, useCallback, useEffect } from 'react';
 
-  return async (enabled: boolean) => {
-    setModPending(modId, true);
+interface UpdateState {
+  status: 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
+  version?: string;
+  notes?: string;
+  progress?: { downloaded: number; total: number | null };
+  error?: string;
+}
+
+export function useUpdateCheck() {
+  const [state, setState] = useState<UpdateState>({ status: 'idle' });
+  const [update, setUpdate] = useState<Update | null>(null);
+
+  const checkForUpdate = useCallback(async () => {
+    setState({ status: 'checking' });
     try {
-      await invoke<ModStatus>('toggle_mod', { modId, enabled });
-      await refreshMods(); // re-read from Rust after success
+      const result = await check();
+      if (result) {
+        setUpdate(result);
+        setState({
+          status: 'available',
+          version: result.version,
+          notes: result.body ?? undefined,
+        });
+      } else {
+        setState({ status: 'idle' });
+      }
     } catch (err) {
-      setModPending(modId, false); // revert spinner
-      toast.error(`Failed to toggle mod: ${err}`);
+      setState({ status: 'error', error: String(err) });
     }
-  };
+  }, []);
+
+  const installUpdate = useCallback(async () => {
+    if (!update) return;
+    setState(prev => ({ ...prev, status: 'downloading', progress: { downloaded: 0, total: null } }));
+    try {
+      await update.downloadAndInstall((event) => {
+        if (event.event === 'Started') {
+          setState(prev => ({
+            ...prev,
+            progress: { downloaded: 0, total: event.data.contentLength ?? null },
+          }));
+        } else if (event.event === 'Progress') {
+          setState(prev => ({
+            ...prev,
+            progress: {
+              downloaded: (prev.progress?.downloaded ?? 0) + event.data.chunkLength,
+              total: prev.progress?.total ?? null,
+            },
+          }));
+        } else if (event.event === 'Finished') {
+          setState(prev => ({ ...prev, status: 'ready' }));
+        }
+      });
+      await relaunch();
+    } catch (err) {
+      setState({ status: 'error', error: String(err) });
+    }
+  }, [update]);
+
+  // Check on mount (after short delay to not block startup)
+  useEffect(() => {
+    const timer = setTimeout(checkForUpdate, 5000);
+    return () => clearTimeout(timer);
+  }, [checkForUpdate]);
+
+  return { ...state, checkForUpdate, installUpdate };
 }
 ```
 
-### Pattern 3: File Manifest as Source of Truth
+### Pattern 2: Passive Update Notification (Not Auto-Install)
 
-**What:** At import time, the archive extractor records every file path within a mod into the SQLite `file_entries` table, associated with the mod's ID. Toggle operations use this manifest to know exactly which files to move. Conflict detection queries this table to find path overlaps between enabled mods.
+**What:** The app checks for updates on startup (after a delay) and shows a non-intrusive banner/toast. The user explicitly clicks "Install" to proceed. The app never downloads or installs without user consent.
 
-**When to use:** Always — this is the core data model for a file-tracking mod manager.
+**When to use:** Always for ModToggler. Users managing game mods need control over when their tool restarts -- they may be in the middle of configuring mods before a gaming session.
 
-**Trade-offs:** Import is slower (must record manifests), but all subsequent operations are fast index lookups rather than filesystem scans.
+**Trade-offs:** Users may ignore updates, but this is preferable to interrupting a mod management session.
 
-**Example schema:**
-```sql
-CREATE TABLE mods (
-    id          INTEGER PRIMARY KEY,
-    game_id     INTEGER NOT NULL REFERENCES games(id),
-    name        TEXT NOT NULL,
-    enabled     BOOLEAN NOT NULL DEFAULT 0,
-    staged_path TEXT NOT NULL   -- path in ~/.modtoggler/disabled/[game]/
-);
-
-CREATE TABLE file_entries (
-    id           INTEGER PRIMARY KEY,
-    mod_id       INTEGER NOT NULL REFERENCES mods(id),
-    relative_path TEXT NOT NULL  -- relative to mod root, e.g. "ExampleMod.pak"
-    -- no absolute path stored; derived at runtime from mod.staged_path + relative_path
-);
+**Example:**
+```typescript
+// components/UpdateBanner.tsx
+// Renders conditionally based on useUpdateCheck().status
+// 'available' -> "Version {version} available — Install now"
+// 'downloading' -> progress bar
+// 'error' -> dismissible error message
 ```
+
+### Pattern 3: Version Synchronization
+
+**What:** The version in `tauri.conf.json`, `Cargo.toml`, and `package.json` must stay synchronized. The updater compares the running app's version (from `tauri.conf.json`) against the `version` field in `latest.json`. A mismatch = update available.
+
+**When to use:** Every release. The GitHub Actions workflow reads the version from `tauri.conf.json` to create the tag.
+
+**Trade-offs:** Manual version bumping is error-prone. Consider a `bump-version` script or use `cargo-bump` + a pre-tag script, but for a solo project, manual bumping in 3 files is manageable.
 
 ## Data Flow
 
-### Import Mod Flow
+### Update Check Flow
 
 ```
-User picks .zip file
+App starts
+    |
+    v (5 second delay)
+useUpdateCheck.checkForUpdate()
     |
     v
-invoke("import_mod", { game_id, zip_path })
+@tauri-apps/plugin-updater check()
     |
     v
-[Rust] archive::extract_zip()
-    -> extract files to ~/.modtoggler/disabled/[game]/[mod_name]/
-    -> return list of relative file paths (manifest)
+[Rust plugin] GET https://github.com/user/ModToggler/releases/latest/download/latest.json
     |
     v
-[Rust] mod_detector::detect_groups()
-    -> scan manifest for UE4 stem groups (.pak/.ucas/.utoc with same base name)
-    -> return suggested Mod + ModOption structure
+Compare latest.json.version vs current app version (from tauri.conf.json)
     |
-    v
-[Rust] db::insert_mod() + db::insert_file_entries()
-    -> persist mod metadata and full file manifest
+    +-- No update: return null --> setState('idle')
     |
-    v
-[Rust] return ModRecord to frontend
-    |
-    v
-[Frontend] modStore.addMod(record) -- optimistic add, already confirmed by Rust
+    +-- Update available: return Update object --> setState('available')
+         |
+         v
+    UpdateBanner renders: "v{version} available - Install"
+         |
+         v (user clicks Install)
+    update.downloadAndInstall()
+         |
+         v
+    [Rust plugin] Download .msi/.exe from URL in latest.json
+    [Rust plugin] Verify Ed25519 signature against pubkey in tauri.conf.json
+    [Rust plugin] Run installer (NSIS passive mode -- progress bar, no user input)
+         |
+         v
+    relaunch() --> app restarts with new version
 ```
 
-### Toggle Mod Flow
+### CI/CD Build Flow
 
 ```
-User flips toggle switch for Mod A
+Developer bumps version in tauri.conf.json + Cargo.toml + package.json
     |
     v
-invoke("toggle_mod", { mod_id, enabled: true })
+git tag v1.1.0 && git push --tags
     |
     v
-[Rust] conflict::check_before_enable(mod_id)
-    -> query file_entries for mod_id
-    -> cross-join against file_entries for all currently-enabled mods
-    -> if overlap found: return ConflictWarning (frontend shows warning, user confirms)
+GitHub Actions triggers on tag push (v*)
     |
     v
-[Rust] file_ops::move_to_game_dir(mod_id)   [or move_to_staging for disable]
-    -> for each file_entry: fs::rename(staged_path, game_path)
-    -> atomic: if any rename fails, attempt rollback of moved files
+Workflow: checkout -> setup Node + Rust -> npm install -> tauri build
     |
     v
-[Rust] db::set_mod_enabled(mod_id, true)
+tauri-action builds with TAURI_SIGNING_PRIVATE_KEY from GitHub secret
+    |
+    +-- Generates: ModToggler_1.1.0_x64-setup.nsis.exe
+    +-- Generates: ModToggler_1.1.0_x64-setup.nsis.exe.sig
+    +-- Generates: latest.json (platform entries with signature + download URL)
     |
     v
-[Frontend] refreshMods() -- re-reads from Rust to get authoritative state
+Creates GitHub Release (draft or published) with all artifacts
+    |
+    v
+App instances poll latest.json on next check -> see new version
 ```
 
-### State Management
+### Key Integration Points
 
+1. **No existing data flows change.** The updater is fully additive -- it does not modify how mods, games, profiles, or file operations work.
+2. **No database changes.** The updater does not need to store anything in SQLite.
+3. **No new IPC commands.** The plugin handles its own IPC internally.
+4. **State isolation.** Update state lives in the `useUpdateCheck` hook (React state), completely separate from Zustand mod/game stores. No cross-contamination.
+
+## Configuration Details
+
+### tauri.conf.json Additions
+
+```json
+{
+  "bundle": {
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "<GENERATED_PUBLIC_KEY_CONTENT>",
+      "endpoints": [
+        "https://github.com/USER/ModToggler/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}
 ```
-Rust DB (SQLite) — source of truth for all persistent state
-    |
-    | (invoke() on mount + after mutations)
-    v
-Zustand Store — client-side cache
-    |
-    | (subscribe)
-    v
-React Components -- render from store, dispatch actions via hooks
-    |
-    | (user action -> hook -> invoke)
-    v
-Rust Command -> Service -> DB -> return updated record
-    |
-    v
-Zustand Store updated (refresh or optimistic)
+
+Key decisions:
+- **`createUpdaterArtifacts: true`** (not `"v1Compatible"`) -- this is a new app, not migrating from Tauri v1.
+- **Single endpoint** pointing to GitHub Releases `latest/download/latest.json`. The tauri-action auto-generates and uploads this file.
+- **`installMode: "passive"`** -- shows a progress bar during install but requires no user clicks. Alternative is `"quiet"` (fully silent) but passive gives visual feedback.
+
+### capabilities/default.json
+
+```json
+{
+  "permissions": [
+    "core:default",
+    "sql:default",
+    "dialog:default",
+    "fs:default",
+    "updater:default",
+    "process:default"
+  ]
+}
 ```
 
-### Key Data Flows
+`updater:default` grants: `allow-check`, `allow-download`, `allow-install`, `allow-download-and-install`.
+`process:default` grants: `allow-exit`, `allow-restart`.
 
-1. **Import:** zip file -> Rust extractor -> staging dir + DB manifest -> frontend cache updated
-2. **Toggle on:** Frontend optimistic update -> Rust conflict check -> Rust file moves -> Rust DB update -> frontend re-reads authoritative state
-3. **Toggle off:** Same as toggle on in reverse; files move from game dir to staging
-4. **Conflict check:** Pure DB query — cross-join file_entries for mod against all enabled mods — no filesystem scan needed
-5. **Profile save:** Frontend sends current mod enable states -> Rust serializes to DB profile table
-6. **Profile load:** Rust reads profile -> computes delta (what needs to move) -> executes file ops in sequence
+### GitHub Actions Workflow
 
-## Scaling Considerations
+```yaml
+# .github/workflows/release.yml
+name: Release
 
-This is a single-user desktop app, so "scaling" means "how does it hold up as the user's mod library grows."
+on:
+  push:
+    tags:
+      - 'v*'
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 1-20 mods | No concerns. Everything is fast. |
-| 20-200 mods | File manifest queries need indexes on (mod_id, relative_path). SQLite handles this fine. |
-| 200+ mods / large files | File move operations should show progress via Tauri events (emit progress from Rust, listen in frontend). Toggling a mod with 1GB of .pak files takes time — never block the UI. |
+jobs:
+  build-and-release:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
 
-### Scaling Priorities
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
 
-1. **First bottleneck:** Large file moves blocking the UI thread. Fix with async Rust + Tauri event progress reporting. This is important even for moderate use.
-2. **Second bottleneck:** Conflict detection query time with large manifests. Fix with a composite index on file_entries(relative_path, mod_id). Should not be needed under 500 mods.
+      - uses: dtolnay/rust-toolchain@stable
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'ModToggler v__VERSION__'
+          releaseBody: 'See the assets to download and install this version.'
+          releaseDraft: true
+          prerelease: false
+          updaterJsonPreferNsis: true
+```
+
+Key decisions:
+- **Windows-only matrix.** ModToggler is Windows-primary. No need for macOS/Linux runners yet. Add them later if cross-platform support is needed.
+- **Tag-triggered, not branch-triggered.** Explicit `git tag v1.1.0` is more intentional than pushing to a release branch.
+- **`releaseDraft: true`** -- creates a draft release so you can review before publishing. Publish manually from GitHub UI. Once published, `latest/download/latest.json` becomes accessible.
+- **`updaterJsonPreferNsis: true`** -- use NSIS installer (`.exe`) over WiX (`.msi`) for the update target. NSIS supports passive/quiet install modes better.
+- **`__VERSION__`** placeholder is auto-replaced by tauri-action with the version from `tauri.conf.json`.
+
+### GitHub Repository Secrets Required
+
+| Secret | Value | Where to generate |
+|--------|-------|-------------------|
+| `TAURI_SIGNING_PRIVATE_KEY` | Content of the private key file (not a path) | `npx tauri signer generate -w ~/.tauri/modtoggler.key` |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Password used during key generation | Same command as above |
+
+`GITHUB_TOKEN` is auto-provided by GitHub Actions -- no manual setup needed.
+
+## Rust Plugin Registration
+
+In `lib.rs`, add two plugins to the existing Builder chain:
+
+```rust
+tauri::Builder::default()
+    .plugin(tauri_plugin_updater::Builder::new().build())
+    .plugin(tauri_plugin_process::init())
+    // ... existing plugins ...
+    .plugin(
+        tauri_plugin_sql::Builder::default()
+            .add_migrations("sqlite:modtoggler.db", db::migrations::get_migrations())
+            .build(),
+    )
+    .plugin(tauri_plugin_dialog::init())
+    .plugin(tauri_plugin_fs::init())
+    // ... rest of setup
+```
+
+The updater plugin uses `Builder::new().build()` (not just `init()`) because it has configurable options. The defaults are fine -- configuration comes from `tauri.conf.json`.
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Storing Absolute Paths in the File Index
+### Anti-Pattern 1: Checking for Updates on Every User Action
 
-**What people do:** Record the full absolute path of each mod file (e.g., `C:\Users\eric\.modtoggler\disabled\tekken8\ExampleMod\ExampleMod.pak`) in the database.
+**What people do:** Poll for updates frequently or check before each mod toggle.
+**Why it's wrong:** Each check is an HTTPS request to GitHub. Rate-limited, wastes bandwidth, and interrupts the user's workflow.
+**Do this instead:** Check once on app startup (after a 5-second delay) and optionally expose a manual "Check for Updates" button in Settings. No background polling timer.
 
-**Why it's wrong:** If the user moves the app data folder, renames their Windows user account, or the app is used on a different machine via backup, every path in the DB is broken. Conflict detection also becomes a string comparison mess across different game root paths.
+### Anti-Pattern 2: Auto-Installing Without User Consent
 
-**Do this instead:** Store relative paths only (relative to the mod's staging root). Derive absolute paths at runtime by joining the configured staging dir + game slug + mod name + relative path. Store the game's live mod directory separately, configured per-game.
+**What people do:** Detect update, immediately download and install, restart the app.
+**Why it's wrong:** The user may be in the middle of toggling mods before launching a game. An unexpected restart loses their mental context and may leave mods in an inconsistent state if a toggle was in progress.
+**Do this instead:** Show a non-intrusive notification. Let the user choose when to install. The update downloads and installs only when they click "Install."
 
-### Anti-Pattern 2: Doing File I/O from the Frontend
+### Anti-Pattern 3: Skipping Signature Verification
 
-**What people do:** Use Tauri's `fs` plugin directly from React to read/write files, bypass the Rust command layer for "simple" operations.
+**What people do:** Disable signing to "simplify" the build process, or use a test key in production.
+**Why it's wrong:** Without signature verification, a MITM attack or compromised CDN could push malicious binaries to all users. The updater plugin will refuse to install unsigned updates, so skipping signing means updates silently fail.
+**Do this instead:** Generate a real key pair. Store the private key as a GitHub secret. The public key in `tauri.conf.json` is safe to commit. This is a one-time setup cost.
 
-**Why it's wrong:** File operations that seem simple can fail in non-obvious ways on Windows (permission errors in Program Files, files locked by the game process, long paths). Rust has better error handling primitives and can do atomic renames. Bypassing the command layer also means the SQLite manifest gets out of sync with reality.
+### Anti-Pattern 4: Writing Custom Rust Update Commands
 
-**Do this instead:** All file operations go through Rust commands. The frontend only reads state and triggers commands. Keep the `fs` plugin permission scope minimal (or disabled entirely).
-
-### Anti-Pattern 3: Treating the Zustand Store as the Source of Truth
-
-**What people do:** After import, add the mod to the Zustand store and consider that the record. Skip re-reading from Rust because "we already know what we just imported."
-
-**Why it's wrong:** The Rust side may have corrected names, detected groupings, assigned IDs, or failed partway through. The frontend's optimistic state drifts from reality. Subsequent toggle operations send stale data to Rust.
-
-**Do this instead:** After any Rust command that mutates state (import, toggle, remove), call a refresh command that re-reads the canonical state from Rust and replaces the Zustand store contents. Zustand is a display cache, not a database.
-
-### Anti-Pattern 4: Synchronous File Moves for Large Mods
-
-**What people do:** Call a blocking file move command and wait for it to return, displaying a spinner. No progress indication. UI appears frozen.
-
-**Why it's wrong:** Moving a 1GB .pak file on a spinning hard disk can take 10-30 seconds. The user cannot distinguish a slow operation from a crash. On Windows, large moves across volumes (if staging dir is on a different drive than the game) are copy+delete, which is even slower.
-
-**Do this instead:** Use Tauri's event system. Emit progress events from Rust as files are moved (`app_handle.emit("move_progress", payload)`). Listen in the frontend and render a progress bar. Keep the UI responsive throughout.
+**What people do:** Create `#[command] fn check_update()` functions that wrap the updater plugin from Rust, then expose them via tauri-specta like other commands.
+**Why it's wrong:** Adds unnecessary IPC round-trips. The `@tauri-apps/plugin-updater` JS API already talks directly to the Rust plugin internals. Custom commands add code to maintain and test with no benefit.
+**Do this instead:** Use the JS plugin API directly from the React hook. The only Rust change needed is registering the plugin in `lib.rs`.
 
 ## Integration Points
 
@@ -363,32 +467,56 @@ This is a single-user desktop app, so "scaling" means "how does it hold up as th
 
 | Service | Integration Pattern | Notes |
 |---------|---------------------|-------|
-| Game mod directory | Direct filesystem access via Rust std::fs | May require elevated permissions on Program Files paths; handle PermissionDenied explicitly |
-| .zip archives | zip crate (Rust) — synchronous extraction | Run on Tauri async command thread to avoid blocking. Large zips can be slow. |
-| Windows shell (UAC) | If needed: tauri-plugin-shell or runas crate | Only needed if game is in Program Files and UAC is enforced; test early |
+| GitHub Releases | Static file hosting for `latest.json` + installer binaries | Free for public repos. `latest/download/` always points to the most recent non-draft, non-prerelease release. |
+| GitHub Actions | CI/CD runner for building Windows installer | Free tier: 2,000 minutes/month for public repos. Windows runner uses ~2x minutes. A Tauri build takes ~5-10 min. |
 
 ### Internal Boundaries
 
 | Boundary | Communication | Notes |
 |----------|---------------|-------|
-| React components <-> Zustand store | Direct hook access (useGameStore, useModStore) | No prop drilling; components subscribe to slices |
-| Zustand store <-> Rust | invoke() calls via lib/tauri.ts wrappers | All invoke calls typed; never raw string command names in components |
-| Rust commands <-> services | Direct function calls (same process) | Services return Result<T, AppError>; commands map AppError to InvokeError |
-| Rust services <-> SQLite | sqlx async queries via db module | All queries in db/queries.rs — no inline SQL in services |
-| Rust services <-> filesystem | std::fs (sync) or tokio::fs (async) | Use tokio::fs for large file moves to keep async executor happy |
-| Tauri events (Rust -> Frontend) | app_handle.emit() / listen() in React | Used for progress reporting on long operations; not for primary data sync |
+| UpdateBanner <-> useUpdateCheck | React hook return values | Standard hook pattern, no special coupling |
+| useUpdateCheck <-> plugin-updater | Direct JS API calls | No IPC layer to maintain; plugin handles it |
+| plugin-updater <-> GitHub Releases | HTTPS GET to endpoint URL | Configured in tauri.conf.json, not in code |
+| tauri-action <-> tauri.conf.json | Reads version and bundle config at build time | Version must be correct before tagging |
+| Update system <-> Existing mod system | None -- fully isolated | Update state is React-local, not in Zustand stores or SQLite |
+
+## Build Order Recommendation
+
+Based on dependency analysis, implement in this order:
+
+1. **Signing key generation + configuration** (no code changes, but everything depends on it)
+   - Generate key pair
+   - Add public key to `tauri.conf.json`
+   - Store private key + password as GitHub secrets
+   - Add `createUpdaterArtifacts: true` to `tauri.conf.json`
+
+2. **Rust plugin registration** (minimal code, enables everything else)
+   - Add `tauri-plugin-updater` and `tauri-plugin-process` to `Cargo.toml`
+   - Add `@tauri-apps/plugin-updater` and `@tauri-apps/plugin-process` to `package.json`
+   - Register plugins in `lib.rs`
+   - Add permissions to `capabilities/default.json`
+
+3. **GitHub Actions workflow** (can test independently of frontend UI)
+   - Create `.github/workflows/release.yml`
+   - Test with a manual tag push
+   - Verify draft release contains `.exe`, `.sig`, and `latest.json`
+
+4. **Frontend update UI** (needs a published release to test against)
+   - Create `useUpdateCheck` hook
+   - Create `UpdateBanner` component
+   - Mount in `App.tsx`
+   - Test by installing an older version and verifying it detects the newer release
 
 ## Sources
 
-- [Tauri v2 Architecture](https://v2.tauri.app/concept/architecture/) — official Tauri documentation
-- [Tauri v2 IPC / Calling Rust from Frontend](https://v2.tauri.app/develop/calling-rust/) — official Tauri documentation
-- [Tauri v2 State Management](https://v2.tauri.app/develop/state-management/) — official Tauri documentation
-- [Tauri v2 Store Plugin](https://v2.tauri.app/plugin/store/) — official Tauri documentation
-- [Tauri v2 SQL Plugin](https://v2.tauri.app/plugin/sql/) — official Tauri documentation
-- [IronyModManager Conflict Detection Architecture](https://deepwiki.com/bcssov/IronyModManager/3.4-conflict-detection-and-resolution) — open source mod manager reference
-- [Vortex Mod Manager (open source)](https://github.com/Nexus-Mods/Vortex) — reference implementation (Electron-based, same domain)
-- [Tauri Global State Management pattern](https://github.com/robosushie/tauri-global-state-management) — Zustand + Rust state sync reference
+- [Tauri v2 Updater Plugin](https://v2.tauri.app/plugin/updater/) -- official documentation
+- [Tauri v2 Process Plugin](https://v2.tauri.app/plugin/process/) -- official documentation
+- [Tauri v2 GitHub Distribution Guide](https://v2.tauri.app/distribute/pipelines/github/) -- official documentation
+- [tauri-apps/tauri-action](https://github.com/tauri-apps/tauri-action) -- official GitHub Action for building and releasing
+- [@tauri-apps/plugin-updater JS API Reference](https://v2.tauri.app/reference/javascript/updater/) -- official API docs
+- [Tauri v2 Auto-Updater with GitHub](https://thatgurjot.com/til/tauri-auto-updater/) -- community guide with practical gotchas
+- [Tauri v2 Updater Blog Post](https://ratulmaharaj.com/posts/tauri-automatic-updates/) -- community reference
 
 ---
-*Architecture research for: Mod management desktop app (Tauri v2 + React + TypeScript)*
-*Researched: 2026-03-04*
+*Architecture research for: Auto-update integration (ModToggler v1.1)*
+*Researched: 2026-03-08*

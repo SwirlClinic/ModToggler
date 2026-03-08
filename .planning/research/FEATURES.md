@@ -1,8 +1,8 @@
 # Feature Research
 
-**Domain:** Game mod manager desktop application (PAK/file-based, multi-game)
-**Researched:** 2026-03-04
-**Confidence:** HIGH (competitive analysis from Vortex, MO2, Fluffy Mod Manager, Tekken 8-specific tools; MEDIUM on differentiators — user demand inferred from pain-point articles)
+**Domain:** Auto-update and CI/CD for Tauri v2 desktop app (v1.1 milestone for ModToggler)
+**Researched:** 2026-03-08
+**Confidence:** HIGH (official Tauri v2 docs, tauri-action repo, multiple verified implementation guides)
 
 ---
 
@@ -10,118 +10,105 @@
 
 ### Table Stakes (Users Expect These)
 
-Features users assume exist. Missing these = product feels incomplete.
+Features that any self-updating desktop app must have. Missing these = broken update experience.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Toggle mod on/off with one click | Core reason to use a manager over manual file moves | LOW | Must be instant and reliable; failure here is catastrophic trust loss |
-| Import mod from .zip archive | Standard delivery format for all Tekken 8 mods on Nexus/TekkenMods | MEDIUM | Must extract, introspect file structure, and register mod metadata on import |
-| Persistent mod state across app restarts | Users expect their enabled/disabled state to be remembered | LOW | Requires a local config/DB; JSON or SQLite both work |
-| Per-game mod lists | Users manage mods for multiple games; mixing them is confusing | LOW | Game selection screen drives which mod list is shown |
-| Add/remove games with configurable mod path | Each game has a different Paks or Mods directory | LOW | Simple settings form with path picker |
-| Conflict detection — warn on overlapping files | Two mods touching the same .pak stem means one silently overwrites the other | MEDIUM | File-stem comparison for UE4 PAK triples (.pak/.ucas/.utoc); straightforward hash/name scan |
-| Clean removal (delete mod + its files from staging) | Users need to get rid of mods they no longer want | LOW | Must remove from staging area only; never touch game directory for disabled mods |
-| Show which files belong to which mod | Users need confidence the app knows what it owns | LOW | Display on mod detail/expand view; data captured at import |
-| Disabled mods persisted in app-managed folder | Files must not disappear when toggled off | LOW | App moves files to ~/.modtoggler/disabled/[game]/ on disable |
+| Check for updates on app launch | Users expect to be notified without manual checking | LOW | `check()` API on startup; compare remote version to `Cargo.toml`/`tauri.conf.json` version |
+| Non-blocking update notification | Update check must not block app usage | LOW | Run check async; show result only when available |
+| User-initiated install (not forced) | Users hate forced restarts mid-session; mod operations may be in progress | LOW | Show "Update Available" UI; user clicks "Install" when ready |
+| Download progress indication | Users need to know something is happening during download | LOW | `downloadAndInstall()` emits `Started`, `Progress`, `Finished` events with content_length and chunk_length |
+| Signed update verification | Users must trust that updates are authentic, not tampered | MEDIUM | Tauri enforces this -- cannot be disabled. Requires key pair generation and CI secret management |
+| Automatic latest.json generation in CI | Release artifacts must be machine-readable for the updater to find them | LOW | `tauri-action` generates `latest.json` automatically with `includeUpdaterJson: true` |
+| Windows NSIS installer for updates | Standard Windows update mechanism for per-user installs | LOW | NSIS is the default and recommended target; supports ARM64; no admin required for per-user install |
+| CI builds on tag push | Releases should be automated, not manual | MEDIUM | GitHub Actions workflow triggered on version tag push; `tauri-action` handles build + upload |
 
 ### Differentiators (Competitive Advantage)
 
-Features that set the product apart. Not required, but valued.
+Features that improve the update experience beyond the basics. Not required but valuable for a mod manager.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Named profiles per game (save/load mod configurations) | Power users run "online-safe" vs "full mod" setups; switching is otherwise tedious | MEDIUM | Store profile as a named set of enabled mod IDs; switching moves files accordingly |
-| Mod options / sub-mod toggling | Tekken 8 costume mods often ship with color variants in sub-folders; no existing free tool handles this well | HIGH | Sub-folder structure within a mod; each sub-folder is independently toggleable; requires recursive introspection at import |
-| Unreal Engine PAK triple auto-grouping | Users hate manually associating .pak/.ucas/.utoc files; current tools are inconsistent | MEDIUM | Detect files sharing a base stem (e.g., `ExampleMod.pak`, `ExampleMod.ucas`, `ExampleMod.utoc`) and present them as one logical mod |
-| Mishmash / loose-file game support | Games that scatter mod files across the root dir have no dedicated manager | HIGH | Requires manual file tagging UI at import time — user maps files to arbitrary destination paths; app tracks the mapping |
-| Conflict visualization showing which specific mods conflict | Most tools say "conflict exists" but don't clearly show which two mods are fighting over what | MEDIUM | Render a conflict matrix or inline badge on each mod card showing the names of conflicting mods |
-| Per-mod notes field | Users want to annotate mods ("breaks online", "wait for update") | LOW | Simple text field stored in mod metadata |
-| Lightweight, no account required, no Nexus integration | Community frustration: Vortex forces NexusMods login and ecosystem lock-in | LOW | No auth, no download integration — pure local file management |
+| Update prompt preserving mod operation safety | Mod toggling involves file moves; an update during a file operation could corrupt state | LOW | Disable "Install Now" button while file operations are in progress; check transaction journal state |
+| Release notes display in-app | Users want to know what changed before deciding to update | LOW | `notes` field from `latest.json` rendered in the update dialog; Tauri provides this automatically |
+| "Remind me later" / dismiss update | Users may be mid-session and not want to restart | LOW | Dismiss notification; re-check on next launch or after N hours |
+| Passive install mode (progress bar, no interaction) | Smoother UX than showing the full NSIS installer wizard | LOW | Set `windows.installMode: "passive"` in updater config; shows progress bar only |
+| Version display in app UI | Users should know what version they're running | LOW | Read from `tauri.conf.json` version at build time; display in settings/about |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Mod downloading from Nexus/TekkenMods | "One app to rule them all" appeal | Requires API keys, rate limits, login flows, legal review, and constant maintenance as sites change; massively expands scope beyond file management | Keep scope at import from local .zip — user downloads manually, then imports |
-| Auto-update mods | Convenience when mods ship fixes | Mod updates can break working setups silently; requires tracking mod IDs against external registries; outside scope of a file manager | Show "last imported" date on mod card so user knows when they last updated manually |
-| Game launching / injection | Users want one-click "launch with mods" | Game launch logic varies wildly per game/platform; anti-cheat interactions; permission complexity; completely separate problem domain | Out of scope per PROJECT.md; link to existing launchers via shell open if needed |
-| Virtual file system (VFS) like MO2 | No file moves = no risk of file loss | VFS requires kernel-level or injected hooking (USVFS, hardlinks, or fuse); enormous complexity on Windows with UAC and Program Files paths; hard to debug when it breaks | File-move approach is simpler, auditable, and adequate for the target use case |
-| Load order management / priority numbers | Power users want fine-grained control | Meaningful only when two mods touch the same file AND both should partially apply — not possible with PAK files (last writer wins); adds UI complexity for no benefit in PAK-based games | Surface conflict warnings instead; let user choose which conflicting mod to disable |
-| Mod merging | "Apply both mods at once" | Requires understanding internal file formats (PAK internals, mesh files, textures); deeply game-specific; easily creates corrupted output | Out of scope; direct users to game-specific merge tools |
-| Cloud sync of mod configurations | Share setups between machines | Requires auth, cloud storage integration, sync conflict resolution; high complexity for a niche use case | Export/import profile as a JSON file for manual sharing |
+| Silent/forced auto-update | "Just keep it up to date" | Kills the app on Windows due to NSIS installer limitation; interrupts active mod operations; violates user trust | Notify + prompt UX; user chooses when to install |
+| Beta/canary update channels | Power users want bleeding edge | Adds significant infrastructure complexity (separate endpoints, channel switching UI, version comparison logic); overkill for a single-developer project | Ship stable releases only; use GitHub pre-releases for manual beta testing |
+| Rollback to previous version | "The update broke something" | Requires storing previous installers, managing rollback state, potentially reverting DB migrations; enormous complexity | Users can download previous version from GitHub Releases manually; keep releases page accessible |
+| Delta/differential updates | Smaller downloads | Tauri does not support delta updates; the full installer is downloaded every time; attempting custom delta logic is a maintenance nightmare | Full installer downloads are small (~5-10MB for Tauri apps); not worth optimizing |
+| In-app changelog history | "Show me all past changes" | Requires maintaining structured changelog data, rendering engine, pagination; scope creep for an update feature | Link to GitHub Releases page for full history; show only current update's notes |
+| Auto-update mods alongside app update | "Update everything at once" | Already ruled out of scope in PROJECT.md; mod updates can break setups; completely different problem domain | Keep app updates and mod management separate |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[Game Configuration (add game + path)]
-    └──required by──> [Per-Game Mod List]
-                          └──required by──> [Toggle On/Off]
-                          └──required by──> [Conflict Detection]
-                          └──required by──> [Named Profiles]
+[Signing Key Generation]
+    └──required by──> [CI Build Pipeline]
+                          └──required by──> [GitHub Release with Artifacts]
+                                                └──required by──> [latest.json Endpoint]
+                                                                      └──required by──> [Updater Plugin Check]
+                                                                                            └──required by──> [Update Notification UI]
+                                                                                                                  └──required by──> [Download + Install Flow]
 
-[Import from .zip]
-    └──required by──> [All mod operations]
-    └──enables──> [UE4 PAK Triple Auto-Grouping]
-    └──enables──> [Mod Options / Sub-Mod Toggling]
+[tauri.conf.json updater config]
+    └──required by──> [Updater Plugin Check]
 
-[File Move (toggle mechanism)]
-    └──required by──> [Disabled Mods in Staging Folder]
-    └──required by──> [Clean Removal]
+[Capabilities permissions (updater:default)]
+    └──required by──> [Updater Plugin Check]
 
-[Conflict Detection]
-    └──enhances──> [Conflict Visualization]
-
-[Named Profiles]
-    └──requires──> [Toggle On/Off]  (profiles are just saved sets of toggle states)
-
-[Mod Options / Sub-Mod Toggling]
-    └──requires──> [Import from .zip]  (sub-folder structure discovered at import)
-    └──conflicts with──> [UE4 PAK Triple Auto-Grouping at top level]
-                         (sub-mods contain their own PAK triples; grouping must operate
-                          at sub-mod level, not root mod level)
+[Version bump workflow]
+    └──required by──> [CI Build Pipeline]  (version in tauri.conf.json/Cargo.toml/package.json must match tag)
 ```
 
 ### Dependency Notes
 
-- **Game Configuration required by everything:** Without knowing the game's mod path, the app cannot move files or detect conflicts. This is the first feature to build.
-- **Import required by all mod operations:** The app's entire model is built on tracked imports. No import = no managed mods.
-- **Toggle requires file-move infrastructure:** The Rust backend must handle large files, UAC-elevated paths in Program Files, and atomic moves (no partial state). Build this carefully before building UI on top.
-- **Profiles require stable toggle:** Switching a profile is many toggles in sequence. If individual toggle is unreliable, profile switching amplifies the failure.
-- **Sub-mod toggling complicates PAK grouping:** At the top mod level, PAK triples group by base stem. Inside a sub-mod folder, the same grouping applies but is scoped to that sub-folder. The grouping logic must be recursive-aware.
+- **Signing key is the foundation:** Without a key pair, no signed artifacts are produced, and the updater refuses to install anything. Generate keys before any other work.
+- **CI pipeline must exist before updater works:** The updater checks `latest.json` on GitHub Releases. That file is generated by `tauri-action`. No CI = no `latest.json` = updater has nothing to check.
+- **Version consistency is critical:** `tauri.conf.json`, `Cargo.toml`, and `package.json` must all have matching versions. Mismatch causes the updater to either skip valid updates or attempt invalid ones.
+- **Update UI depends on working check:** Build the notification UI after confirming the check/download/install flow works end-to-end with a real release.
 
 ---
 
 ## MVP Definition
 
-### Launch With (v1)
+### Launch With (v1.1)
 
-Minimum viable product — what's needed to validate the core use case (Tekken 8 on Windows).
+Minimum for a working auto-update system.
 
-- [ ] Add game with configured Paks path
-- [ ] Import mod from .zip — extract, detect PAK triples, register file manifest
-- [ ] Toggle mod on/off (move files between game directory and ~/.modtoggler/disabled/)
-- [ ] Persist mod state across restarts (local config)
-- [ ] Conflict detection — warn when two enabled mods share a file stem
-- [ ] Show mod list per game with enabled/disabled status
+- [ ] Signing key pair generated and private key stored as GitHub secret
+- [ ] `tauri-plugin-updater` integrated in Rust backend with plugin registration
+- [ ] `tauri.conf.json` configured with endpoints, pubkey, `createUpdaterArtifacts`, and `windows.installMode: "passive"`
+- [ ] Updater permissions added to capabilities (`updater:default`)
+- [ ] GitHub Actions workflow: build on tag push, upload artifacts + `latest.json` to GitHub Release
+- [ ] Frontend: check for updates on app launch (async, non-blocking)
+- [ ] Frontend: "Update Available" notification with version and release notes
+- [ ] Frontend: "Install Now" button that calls `downloadAndInstall()` with progress feedback
+- [ ] Frontend: version display in settings or title bar
 
 ### Add After Validation (v1.x)
 
-Features to add once core file-move and toggle are proven stable.
+Features to add once the basic update flow is proven stable.
 
-- [ ] Named profiles — trigger: users report manually re-enabling the same sets repeatedly
-- [ ] Mod options / sub-folder toggling — trigger: user feedback on costume color variant use case
-- [ ] Per-mod notes — trigger: cheap to add, high quality-of-life signal once core is solid
-- [ ] Conflict visualization (which mods conflict) — trigger: conflict warnings ship in v1; visualization is the natural follow-up
+- [ ] "Remind me later" with periodic re-check -- trigger: user feedback that the prompt is annoying
+- [ ] Guard against updating during active file operations -- trigger: after confirming the transaction journal can detect in-progress operations
+- [ ] Manual "Check for Updates" button in settings -- trigger: users report wanting to check on-demand
 
 ### Future Consideration (v2+)
 
-Features to defer until product-market fit is established.
+Features to defer until there is clear demand.
 
-- [ ] Mishmash / loose-file game support — high complexity, niche secondary use case; defer until primary use case is mature
-- [ ] Export/import profiles as JSON — useful for sharing, but not needed until profiles ship
-- [ ] Multi-platform (macOS/Linux) — Tauri enables it, but no validated demand outside Windows gaming
+- [ ] Update channels (beta/stable) -- only if the project grows to need staged rollouts
+- [ ] CrabNebula Cloud for managed update infrastructure -- only if GitHub Releases becomes limiting
+- [ ] Cross-platform CI (macOS/Linux builds) -- only when cross-platform support is prioritized
 
 ---
 
@@ -129,53 +116,115 @@ Features to defer until product-market fit is established.
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Toggle mod on/off | HIGH | MEDIUM | P1 |
-| Import from .zip + file manifest | HIGH | MEDIUM | P1 |
-| Game configuration (add game + path) | HIGH | LOW | P1 |
-| Persist state across restarts | HIGH | LOW | P1 |
-| Conflict detection (file stem overlap) | HIGH | LOW | P1 |
-| UE4 PAK triple auto-grouping | HIGH | MEDIUM | P1 |
-| Named profiles | MEDIUM | MEDIUM | P2 |
-| Mod options / sub-mod toggling | MEDIUM | HIGH | P2 |
-| Conflict visualization (which mods) | MEDIUM | LOW | P2 |
-| Per-mod notes | LOW | LOW | P2 |
-| Mishmash / loose-file game support | MEDIUM | HIGH | P3 |
-| Export/import profiles as JSON | LOW | LOW | P3 |
+| Signing key setup + CI secrets | HIGH (blocker) | LOW | P1 |
+| GitHub Actions build workflow | HIGH (blocker) | MEDIUM | P1 |
+| Updater plugin integration (Rust) | HIGH | LOW | P1 |
+| tauri.conf.json updater config | HIGH (blocker) | LOW | P1 |
+| Capabilities permissions | HIGH (blocker) | LOW | P1 |
+| Update check on launch | HIGH | LOW | P1 |
+| Update notification UI | HIGH | LOW | P1 |
+| Download + install with progress | HIGH | LOW | P1 |
+| Version display in app | MEDIUM | LOW | P1 |
+| Passive install mode (Windows) | MEDIUM | LOW | P1 |
+| "Remind me later" dismiss | LOW | LOW | P2 |
+| Guard during file operations | MEDIUM | MEDIUM | P2 |
+| Manual "Check for Updates" button | LOW | LOW | P2 |
+| Beta update channel | LOW | HIGH | P3 |
 
 **Priority key:**
-- P1: Must have for launch
-- P2: Should have, add when possible
+- P1: Must have for v1.1 launch
+- P2: Should have, add when feedback warrants
 - P3: Nice to have, future consideration
 
 ---
 
 ## Competitor Feature Analysis
 
-| Feature | Fluffy Mod Manager | Mod Manager Plus (T8) | Another Mod Manager v2 (T8) | Our Approach |
-|---------|--------------------|-----------------------|------------------------------|--------------|
-| Toggle on/off | Yes | Yes | Yes | Yes — file move to ~/.modtoggler/ |
-| Import from .zip | Yes | Unknown | Unknown | Yes — first-class import flow |
-| PAK triple (.pak/.ucas/.utoc) grouping | Partial (deletes UCAS/UTOC on remove; inconsistent) | Unknown | Unknown | Auto-group by base stem at import |
-| Sub-mod / mod options | No | No | No | Yes (P2) — sub-folder toggling |
-| Conflict detection | No | Yes (same item slot warning) | Yes (same item slot warning) | Yes — file stem overlap detection |
-| Named profiles / presets | Yes (mod presets) | Yes | Yes (V2) | Yes (P2) |
-| Multi-game support | Yes (Capcom-focused) | No (T8 only) | No (T8 only) | Yes — per-game configuration |
-| Mishmash / loose files | Partial (v3.070 WIP) | No | No | Planned (P3) |
-| No account required | Yes | Yes | Yes | Yes — local only |
-| Per-mod notes | No | No | No | Yes (P2) |
+| Feature | Vortex | Fluffy Mod Manager | MO2 | Our Approach |
+|---------|--------|--------------------|-----|--------------|
+| Auto-update app | Yes (Electron auto-updater) | Yes (custom check) | Yes (GitHub releases check) | Yes -- Tauri updater plugin + GitHub Releases |
+| Update notification | System tray notification | In-app dialog | In-app banner | In-app notification banner (non-blocking) |
+| Forced updates | No (user chooses) | No | No | No -- user-initiated install only |
+| Release notes in update dialog | Yes | No | Brief | Yes -- rendered from `latest.json` notes field |
+| Update channels | Stable only | Stable only | Stable + dev builds | Stable only (keep it simple) |
+| CI/CD automation | Yes (Nexus internal) | Unknown | GitHub Actions | GitHub Actions with tauri-action |
+| Signed updates | Yes (code signing) | Unknown | No formal signing | Yes -- Tauri mandatory signing |
+| Progress feedback | Yes | Minimal | Minimal | Yes -- download progress bar from updater events |
+
+---
+
+## Technical Details (for implementers)
+
+### Tauri Updater Plugin Configuration
+
+The updater requires these additions to `tauri.conf.json`:
+
+```json
+{
+  "bundle": {
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "YOUR_PUBLIC_KEY_HERE",
+      "endpoints": [
+        "https://github.com/OWNER/ModToggler/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}
+```
+
+### Windows-Specific Behavior
+
+- **App is force-killed during install:** Windows NSIS installer requires the app to exit. Tauri handles this automatically but the app should use `on_before_exit()` to clean up (e.g., finalize any pending transaction journal entries).
+- **Passive install mode:** Shows a progress bar but requires no user interaction during the NSIS install. Recommended over `quiet` (which needs pre-existing admin) or `basicUi` (which shows a full wizard).
+- **NSIS over MSI:** NSIS is the recommended target for per-user installs (no admin needed), supports ARM64, and is the default in Tauri v2.
+
+### Update Endpoint Format (latest.json)
+
+Generated automatically by `tauri-action` with `includeUpdaterJson: true`:
+
+```json
+{
+  "version": "1.1.0",
+  "notes": "Release notes here",
+  "pub_date": "2026-03-15T10:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "SIGNATURE_CONTENT",
+      "url": "https://github.com/OWNER/ModToggler/releases/download/v1.1.0/ModToggler_1.1.0_x64-setup.nsis.zip"
+    }
+  }
+}
+```
+
+### Required Secrets for CI
+
+| Secret | Purpose | How to Set |
+|--------|---------|------------|
+| `TAURI_SIGNING_PRIVATE_KEY` | Signs update artifacts | `tauri signer generate -w ~/.tauri/modtoggler.key`, store key content as GitHub secret |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Unlocks signing key | Password chosen during key generation, store as GitHub secret |
+| `GITHUB_TOKEN` | Upload release artifacts | Automatic; ensure workflow has `contents: write` permission |
 
 ---
 
 ## Sources
 
-- [Vortex Mod Manager — Nexus Mods](https://www.nexusmods.com/about/vortex) — MEDIUM confidence (marketing page)
-- [Mod Managers Comparison — ModOrganizer2 GitHub Wiki](https://github.com/ModOrganizer2/modorganizer/wiki/Mod-Managers-Comparison) — HIGH confidence (maintained by MO2 team)
-- [Mod Manager Plus at Tekken 8 Nexus](https://www.nexusmods.com/tekken8/mods/231) — MEDIUM confidence (mod page, features described by author)
-- [Another Mod Manager V2 — TekkenMods](https://tekkenmods.com/mod/4086/another-mod-manager-v2-now-with-presets) — MEDIUM confidence (mod page)
-- [Fluffy Mod Manager v3.070 — Mixed PAK/Loose File Support](https://www.patreon.com/posts/fluffy-mod-v3-151635881) — MEDIUM confidence (developer release notes)
-- [Why Is Game Mod Management Still So Cumbersome in 2025? — DEV Community](https://dev.to/subtixx/why-is-game-mod-management-still-so-cumbersome-in-2025-5c0) — MEDIUM confidence (community analysis, not official)
+- [Tauri v2 Updater Plugin -- Official Docs](https://v2.tauri.app/plugin/updater/) -- HIGH confidence
+- [Tauri v2 GitHub Actions Pipeline -- Official Docs](https://v2.tauri.app/distribute/pipelines/github/) -- HIGH confidence
+- [tauri-apps/tauri-action -- GitHub](https://github.com/tauri-apps/tauri-action) -- HIGH confidence
+- [Tauri v2 Windows Installer Docs](https://v2.tauri.app/distribute/windows-installer/) -- HIGH confidence
+- [Tauri v2 Auto-Updater with GitHub -- Gurjot](https://thatgurjot.com/til/tauri-auto-updater/) -- MEDIUM confidence (practical implementation walkthrough)
+- [Tauri v2 Updater -- Ratul Maharaj](https://ratulmaharaj.com/posts/tauri-automatic-updates/) -- MEDIUM confidence (implementation guide)
+- [Ship Tauri v2 App: GitHub Actions and Release Automation -- DEV Community](https://dev.to/tomtomdu73/ship-your-tauri-v2-app-like-a-pro-github-actions-and-release-automation-part-22-2ef7) -- MEDIUM confidence
+- [Tauri Updater + GitHub Releases Discussion #10206](https://github.com/orgs/tauri-apps/discussions/10206) -- MEDIUM confidence
+- [Beta and Stable Channels Discussion #11069](https://github.com/tauri-apps/tauri/discussions/11069) -- MEDIUM confidence
 
 ---
 
-*Feature research for: ModToggler — game mod manager desktop app*
-*Researched: 2026-03-04*
+*Feature research for: ModToggler v1.1 -- Auto-Update Releases*
+*Researched: 2026-03-08*
