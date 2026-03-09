@@ -16,11 +16,11 @@ Requirements for auto-update releases milestone. Each maps to roadmap phases.
 
 ### Update UX
 
-- [ ] **UPD-01**: App checks for updates on launch without blocking the UI
+- [x] **UPD-01**: App checks for updates on launch without blocking the UI
 - [ ] **UPD-02**: User sees a notification banner when an update is available, showing the new version
 - [ ] **UPD-03**: User can view release notes for the available update before deciding to install
 - [ ] **UPD-04**: User can click "Install" to download and install the update with a progress indicator
-- [ ] **UPD-05**: Update installs in passive mode (progress bar only, no NSIS wizard)
+- [x] **UPD-05**: Update installs in passive mode (progress bar only, no NSIS wizard)
 - [ ] **UPD-06**: User can see the current app version in the UI
 
 ### CI/CD Pipeline
@@ -63,11 +63,11 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | INFRA-02 | Phase 5 | Complete |
 | INFRA-03 | Phase 5 | Complete |
 | INFRA-04 | Phase 5 | Complete |
-| UPD-01 | Phase 7 | Pending |
+| UPD-01 | Phase 7 | Complete |
 | UPD-02 | Phase 7 | Pending |
 | UPD-03 | Phase 7 | Pending |
 | UPD-04 | Phase 7 | Pending |
-| UPD-05 | Phase 7 | Pending |
+| UPD-05 | Phase 7 | Complete |
 | UPD-06 | Phase 7 | Pending |
 | CICD-01 | Phase 6 | Complete |
 | CICD-02 | Phase 6 | Complete |
