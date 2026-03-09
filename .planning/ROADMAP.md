@@ -69,7 +69,9 @@ Plans:
   2. The workflow signs artifacts using the repository's stored signing key secret
   3. A GitHub Release is created containing the `.exe` installer, `.sig` file, and `latest.json` manifest
   4. The `latest.json` contains correct version, download URL, and signature for the updater to consume
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 06-01-PLAN.md -- Create release workflow and verify end-to-end with test tag push
 
 ### Phase 7: Update UI
 **Goal**: Users are notified of available updates and can install them from within the app
@@ -92,5 +94,5 @@ Plans:
 | 3. Profiles | v1.0 | 2/2 | Complete | 2026-03-05 |
 | 4. Loose-File Games | v1.0 | 3/3 | Complete | 2026-03-05 |
 | 5. Updater Foundation | v1.1 | 2/2 | Complete | 2026-03-09 |
-| 6. CI/CD Pipeline | v1.1 | 0/? | Not started | - |
+| 6. CI/CD Pipeline | v1.1 | 0/1 | Planned | - |
 | 7. Update UI | v1.1 | 0/? | Not started | - |
