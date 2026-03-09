@@ -83,7 +83,10 @@ Plans:
   3. User can view release notes and click "Install" to download the update with a visible progress indicator
   4. Update installs in passive mode (progress bar, no NSIS wizard) and the app relaunches on the new version
   5. User can see the current app version displayed in the UI at any time
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 07-01-PLAN.md -- Update state store, check hook, test mocks, and unit tests
+- [ ] 07-02-PLAN.md -- UpdateBanner component, version display, and App.tsx wiring
 
 ## Progress
 
@@ -95,4 +98,4 @@ Plans:
 | 4. Loose-File Games | v1.0 | 3/3 | Complete | 2026-03-05 |
 | 5. Updater Foundation | v1.1 | 2/2 | Complete | 2026-03-09 |
 | 6. CI/CD Pipeline | v1.1 | 1/1 | Complete | 2026-03-09 |
-| 7. Update UI | v1.1 | 0/? | Not started | - |
+| 7. Update UI | v1.1 | 0/2 | Not started | - |
