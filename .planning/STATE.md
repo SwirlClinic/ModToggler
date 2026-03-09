@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Auto-Update Releases
 status: completed
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-09T06:34:08.084Z"
-last_activity: 2026-03-09 -- Executed phase 5 plan 2 (build verification + key backup)
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-09T19:29:53.095Z"
+last_activity: 2026-03-09 -- Executed phase 6 plan 1 (release workflow + end-to-end verification)
 progress:
   total_phases: 7
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 85
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Users can quickly toggle mods on and off without manually moving files, with confidence the app tracks what belongs to which mod.
-**Current focus:** v1.1 Auto-Update Releases -- Phase 5 complete, ready for Phase 6
+**Current focus:** v1.1 Auto-Update Releases -- Phase 6 complete, ready for Phase 7
 
 ## Current Position
 
-Phase: 5 of 7 (Updater Foundation) -- COMPLETE
-Plan: 2 of 2 in current phase (phase complete)
-Status: Phase 5 complete
-Last activity: 2026-03-09 -- Executed phase 5 plan 2 (build verification + key backup)
+Phase: 6 of 7 (CI/CD Pipeline) -- COMPLETE
+Plan: 1 of 1 in current phase (phase complete)
+Status: Phase 6 complete
+Last activity: 2026-03-09 -- Executed phase 6 plan 1 (release workflow + end-to-end verification)
 
-Progress: [██████████████████░░] 85% (17/20 estimated plans)
+Progress: [██████████████████████████████] 100% (3/3 v1.1 plans)
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Progress: [██████████████████░░] 85% (17
 |------|----------|-------|-------|
 | Phase 5 P1 | 5min | 2 tasks | 5 files |
 | Phase 5 P2 | 3min | 2 tasks | 4 files |
+| Phase 6 P1 | 12min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -58,6 +59,10 @@ Recent decisions affecting current work:
 - v1.1: Passwordless Ed25519 keypair for CI-friendly signing
 - v1.1: Updater plugin uses Builder pattern (not init()) for future customization
 - v1.1: Signing key backed up to GitHub Secrets + password manager (2 locations minimum)
+- v1.1: tauri-action@v0 (not @v1, which does not exist)
+- v1.1: updaterJsonPreferNsis: true for passive NSIS-based updates
+- v1.1: Version patching in CI uses node -e (not jq) for Windows runner compatibility
+- v1.1: releaseDraft: false so updater can discover releases immediately
 
 ### Pending Todos
 
@@ -66,11 +71,11 @@ None.
 ### Blockers/Concerns
 
 - ~~Signing keypair must be backed up before any other v1.1 work~~ -- RESOLVED: backed up to GitHub Secrets + password manager
-- Version triple sync: tauri.conf.json, Cargo.toml, package.json must match or update detection fails silently
-- tauri-action version ambiguity: research references both @v0 and @v1 -- resolve during Phase 6 planning
+- ~~Version triple sync: tauri.conf.json, Cargo.toml, package.json must match or update detection fails silently~~ -- RESOLVED: CI workflow patches all 3 files from tag automatically
+- ~~tauri-action version ambiguity: research references both @v0 and @v1~~ -- RESOLVED: @v1 does not exist, using @v0
 
 ## Session Continuity
 
-Last session: 2026-03-09T06:34:08.076Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-ci-cd-pipeline/06-CONTEXT.md
+Last session: 2026-03-09T19:29:53.093Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: None

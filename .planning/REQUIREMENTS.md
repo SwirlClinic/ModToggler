@@ -25,9 +25,9 @@ Requirements for auto-update releases milestone. Each maps to roadmap phases.
 
 ### CI/CD Pipeline
 
-- [ ] **CICD-01**: GitHub Actions workflow builds Windows NSIS installer on version tag push
-- [ ] **CICD-02**: CI signs artifacts using the stored signing key secret
-- [ ] **CICD-03**: CI uploads installer + `latest.json` to a GitHub Release automatically
+- [x] **CICD-01**: GitHub Actions workflow builds Windows NSIS installer on version tag push
+- [x] **CICD-02**: CI signs artifacts using the stored signing key secret
+- [x] **CICD-03**: CI uploads installer + `latest.json` to a GitHub Release automatically
 
 ## Future Requirements
 
@@ -69,9 +69,9 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | UPD-04 | Phase 7 | Pending |
 | UPD-05 | Phase 7 | Pending |
 | UPD-06 | Phase 7 | Pending |
-| CICD-01 | Phase 6 | Pending |
-| CICD-02 | Phase 6 | Pending |
-| CICD-03 | Phase 6 | Pending |
+| CICD-01 | Phase 6 | Complete |
+| CICD-02 | Phase 6 | Complete |
+| CICD-03 | Phase 6 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 13 total
