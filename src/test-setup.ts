@@ -11,7 +11,7 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 }));
 
 vi.mock("@tauri-apps/plugin-updater", () => ({
-  check: vi.fn(),
+  check: vi.fn(() => Promise.resolve(null)),
 }));
 
 vi.mock("@tauri-apps/plugin-process", () => ({

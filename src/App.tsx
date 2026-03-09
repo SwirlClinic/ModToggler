@@ -1,23 +1,34 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Settings } from 'lucide-react'
+import { getVersion } from '@tauri-apps/api/app'
 import { Button } from '@/components/ui/button'
 import GameSelector from './components/GameSelector'
 import SettingsPanel from './components/SettingsPanel'
 import ModList from './components/ModList'
 import IntegrityAlert from './components/IntegrityAlert'
+import UpdateBanner from './components/UpdateBanner'
 import { useGameStore } from './store/gameStore'
 import { useGames } from './hooks/useGames'
+import { useUpdateChecker } from './hooks/useUpdateChecker'
 
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
   const { activeGameId } = useGameStore()
   const { data: games = [] } = useGames()
+
+  useUpdateChecker()
+
+  useEffect(() => {
+    getVersion().then(setAppVersion)
+  }, [])
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col" data-theme="dark">
       {/* Top bar */}
       <header className="h-12 border-b border-border flex items-center px-4 gap-3 shrink-0">
         <span className="font-semibold text-sm tracking-wide">ModToggler</span>
+        {appVersion && <span className="text-xs text-muted-foreground">v{appVersion}</span>}
         <div className="flex-1">
           <GameSelector games={games} />
         </div>
@@ -34,6 +45,7 @@ export default function App() {
       {/* Main content */}
       <main className="flex-1 overflow-auto">
         <IntegrityAlert />
+        <UpdateBanner />
         {activeGameId == null ? (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
             Select a game to get started
