@@ -1,5 +1,14 @@
 # Milestones
 
+## v1.1 Auto-Update Releases (Shipped: 2026-03-09)
+
+**Phases completed:** 3 phases, 5 plans, 0 tasks
+
+**Key accomplishments:**
+- (none recorded)
+
+---
+
 ## v1.0 MVP (Shipped: 2026-03-05)
 
 **Phases completed:** 4 phases, 15 plans

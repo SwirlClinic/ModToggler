@@ -27,9 +27,13 @@ Users can quickly toggle mods on and off without manually moving files, with con
 
 ### Active
 
-- [ ] Auto-update via Tauri updater plugin checking GitHub Releases
-- [ ] Update notification UI with prompt to install
-- [ ] GitHub Actions CI/CD pipeline for automated builds and releases
+(None yet -- define in next milestone)
+
+### Validated (v1.1)
+
+- ✓ Auto-update via Tauri updater plugin checking GitHub Releases — v1.1
+- ✓ Update notification UI with prompt to install — v1.1
+- ✓ GitHub Actions CI/CD pipeline for automated builds and releases — v1.1
 
 ### Future
 
@@ -47,21 +51,13 @@ Users can quickly toggle mods on and off without manually moving files, with con
 - Mod merging — requires understanding internal file formats; deeply game-specific
 - Cloud sync — niche use case; JSON export covers sharing
 
-## Current Milestone: v1.1 Auto-Update Releases
-
-**Goal:** Enable the app to update itself via GitHub Releases with a notify+prompt UX, backed by CI/CD for automated builds.
-
-**Target features:**
-- Tauri v2 updater plugin integration with GitHub Releases endpoint
-- In-app update notification with user-initiated install
-- GitHub Actions workflow to build Windows installers and publish releases on tag push
-
 ## Context
 
-Shipped v1.0 with 7,733 LOC across Rust and TypeScript.
+Shipped v1.1 with ~8,170 LOC across Rust (3,990) and TypeScript (4,181).
 Tech stack: Tauri v2, React 19, SQLite (sqlx), TanStack Query, Zustand, shadcn/ui, Tailwind CSS.
 Primary use case: Tekken 8 modding on Windows.
 Windows-first but Tauri enables cross-platform if needed later.
+Auto-update pipeline: tag push → CI build → signed release → in-app notification → passive install.
 
 ## Constraints
 
@@ -84,6 +80,11 @@ Windows-first but Tauri enables cross-platform if needed later.
 | tauri-specta for typed bindings | Type-safe IPC between Rust and TypeScript | ✓ Good |
 | mod_type column (not inferred) | Explicit per-mod type tracking for loose vs structured | ✓ Good |
 | Profiles store sub_mod_states as JSON | Avoids third join table; simpler schema | ✓ Good |
+| Ed25519 signing for updates | Tauri requirement, not optional | ✓ Good |
+| GitHub Releases as update endpoint | No custom server needed | ✓ Good |
+| Passive NSIS install mode | No wizard interruption during update | ✓ Good |
+| tauri-action@v0 for CI | @v1 does not exist despite docs | ✓ Good |
+| Silent failure on update check errors | No error UI, dismiss resets to idle | ✓ Good |
 
 ---
-*Last updated: 2026-03-07 after v1.1 milestone started*
+*Last updated: 2026-03-09 after v1.1 milestone*

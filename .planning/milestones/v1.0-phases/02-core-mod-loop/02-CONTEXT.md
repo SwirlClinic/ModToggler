@@ -36,7 +36,7 @@ Users can import mods from .zip archives, toggle them on/off with one click, and
 - Persistent warning badge on mod cards that are currently in conflict — clicking badge shows conflict details
 
 ### Sub-mod Options
-- Detected at import by `Option_` or `option_` prefix pattern (e.g. `Option_ExampleMod_ColorTexture/`)
+- Detected at import by `Option_` or `option_` prefix pattern (e.g. `Option_SomeMod_ColorTexture/`)
 - Displayed nested inside expanded parent card under "Options" section with individual toggles
 - Multiple options can be enabled simultaneously (no radio/exclusive behavior)
 - When parent mod is toggled OFF, all options are disabled too — individual option state is remembered and restored when parent is re-enabled
