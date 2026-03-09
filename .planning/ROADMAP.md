@@ -19,7 +19,7 @@
 
 ### v1.1 Auto-Update Releases
 
-- [ ] **Phase 5: Updater Foundation** - Signing keypair, plugin registration, and updater configuration
+- [x] **Phase 5: Updater Foundation** - Signing keypair, plugin registration, and updater configuration
 - [ ] **Phase 6: CI/CD Pipeline** - GitHub Actions workflow that builds, signs, and publishes releases
 - [ ] **Phase 7: Update UI** - In-app update notification with download, install, and version display
 
@@ -58,7 +58,7 @@
 **Plans:** 2 plans
 Plans:
 - [x] 05-01-PLAN.md -- Generate keypair, install dependencies, configure updater plugin and capabilities
-- [ ] 05-02-PLAN.md -- Run signed build, verify .sig output, user backs up key
+- [x] 05-02-PLAN.md -- Run signed build, verify .sig output, user backs up key
 
 ### Phase 6: CI/CD Pipeline
 **Goal**: Pushing a version tag to GitHub automatically produces a signed release with installer and update manifest
@@ -91,6 +91,6 @@ Plans:
 | 2. Core Mod Loop | v1.0 | 5/5 | Complete | 2026-03-05 |
 | 3. Profiles | v1.0 | 2/2 | Complete | 2026-03-05 |
 | 4. Loose-File Games | v1.0 | 3/3 | Complete | 2026-03-05 |
-| 5. Updater Foundation | v1.1 | 1/2 | In Progress | - |
+| 5. Updater Foundation | v1.1 | 2/2 | Complete | 2026-03-09 |
 | 6. CI/CD Pipeline | v1.1 | 0/? | Not started | - |
 | 7. Update UI | v1.1 | 0/? | Not started | - |
